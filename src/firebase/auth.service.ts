@@ -61,8 +61,10 @@ export function onAuthStateChange(
         return;
       }
 
-      // Sin documento en Firestore: usuario nuevo de Google pendiente de rol
-      const provisional: AppUser = {
+      // No hay documento: crear uno ahora para que el perfil siempre persista.
+      // Esto cubre el caso de usuarios que autenticaron antes de que existiera
+      // la logica de guardado, o si Firestore fallo durante el redirect.
+      const newUser: AppUser = {
         id: firebaseUser.uid,
         name: firebaseUser.displayName
           ?? firebaseUser.email?.split('@')[0]
@@ -74,11 +76,27 @@ export function onAuthStateChange(
         createdAt: new Date().toISOString(),
       };
 
-      console.log('[Auth] Usuario provisional (sin doc Firestore):', provisional.name);
-      callback(provisional);
+      await createUserDocument(newUser);
+      console.log('[Auth] Documento creado automaticamente para:', newUser.name);
+      callback(newUser);
     } catch (err) {
-      console.error('[Auth] Error al cargar usuario de Firestore:', err);
-      callback(null);
+      console.error('[Auth] Error al cargar/crear usuario de Firestore:', err);
+      // Si Firestore falla, devolver datos minimos de Firebase Auth
+      // para que la UI no quede en blanco con sesion activa
+      if (firebaseUser.email) {
+        const fallback: AppUser = {
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName ?? firebaseUser.email.split('@')[0],
+          email: firebaseUser.email,
+          avatar: firebaseUser.photoURL ?? undefined,
+          role: 'customer',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        };
+        callback(fallback);
+      } else {
+        callback(null);
+      }
     }
   });
 }
@@ -103,9 +121,15 @@ export async function startGoogleRedirect(): Promise<void> {
  * Captura el resultado del redirect de Google al volver a la app.
  * Llamar en App.tsx al montar.
  * Retorna null si no hay resultado pendiente (carga normal).
+ *
+ * COMPORTAMIENTO:
+ * - Usuario existente en Firestore → retorna sus datos directamente.
+ * - Usuario NUEVO → crea el documento en Firestore con rol 'customer'
+ *   y retorna isNewUser:true para que la UI ofrezca cambiar a vendedor.
+ *   El perfil SIEMPRE se guarda, independientemente de si elige rol o no.
  */
 export async function checkRedirectResult(): Promise<{
-  user: AppUser | null;
+  user: AppUser;
   isNewUser: boolean;
   firebaseUser: FirebaseUser;
 } | null> {
@@ -123,6 +147,7 @@ export async function checkRedirectResult(): Promise<{
     const firebaseUser = result.user;
     console.log('[Auth] Redirect exitoso:', firebaseUser.email, firebaseUser.displayName);
 
+    // Verificar si ya existe en Firestore
     const existing = await getUserDocument(firebaseUser.uid);
 
     if (existing) {
@@ -130,8 +155,25 @@ export async function checkRedirectResult(): Promise<{
       return { user: existing, isNewUser: false, firebaseUser };
     }
 
-    console.log('[Auth] Usuario nuevo de Google, necesita elegir rol');
-    return { user: null, isNewUser: true, firebaseUser };
+    // Usuario nuevo: crear documento AHORA con rol customer por defecto.
+    // Esto garantiza que el perfil siempre se guarda sin depender del modal.
+    const newUser: AppUser = {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName
+        ?? firebaseUser.email?.split('@')[0]
+        ?? 'Usuario',
+      email: firebaseUser.email ?? '',
+      avatar: firebaseUser.photoURL ?? undefined,
+      role: 'customer',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+
+    await createUserDocument(newUser);
+    console.log('[Auth] Nuevo usuario Google guardado en Firestore:', newUser.name);
+
+    // isNewUser:true para que la UI ofrezca opción de cambiar a vendedor
+    return { user: newUser, isNewUser: true, firebaseUser };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[Auth] Error en getRedirectResult:', msg);

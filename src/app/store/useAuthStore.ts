@@ -113,17 +113,16 @@ export const useAuthStore = create<AuthState>()(
           const result = await checkRedirectResult();
           if (!result) return null; // No venía de un redirect de Google
 
-          if (!result.isNewUser && result.user) {
-            // Usuario existente → login directo
-            set({ user: result.user, isAuthenticated: true });
-            console.log('[Store] Usuario Google existente autenticado:', result.user.name);
-            return { isNewUser: false };
+          // El usuario siempre viene guardado en Firestore desde checkRedirectResult()
+          set({ user: result.user, isAuthenticated: true });
+          console.log('[Store] Usuario Google autenticado:', result.user.name);
+
+          if (result.isNewUser) {
+            // Guardar firebaseUser por si quiere cambiar a rol vendedor
+            set({ pendingGoogleUser: result.firebaseUser });
           }
 
-          // Usuario nuevo → guardar para completar registro con rol
-          set({ pendingGoogleUser: result.firebaseUser });
-          console.log('[Store] Usuario Google nuevo, pendiente de rol');
-          return { isNewUser: true };
+          return { isNewUser: result.isNewUser };
         } catch (err) {
           console.error('[Store] Error en handleGoogleRedirectResult:', err);
           throw err;
@@ -131,14 +130,26 @@ export const useAuthStore = create<AuthState>()(
       },
 
       completeGoogleSignup: async (role) => {
-        const { pendingGoogleUser } = get();
-        if (!pendingGoogleUser) throw new Error('No hay usuario de Google pendiente');
+        const { pendingGoogleUser, user } = get();
 
         set({ isLoading: true });
         try {
-          const user = await completeGoogleRegistration(pendingGoogleUser, role);
-          set({ user, isAuthenticated: true, isLoading: false, pendingGoogleUser: null });
-          return user;
+          let updatedUser: AppUser;
+
+          if (pendingGoogleUser) {
+            // Actualizar el documento ya creado con el rol elegido
+            updatedUser = await completeGoogleRegistration(pendingGoogleUser, role);
+          } else if (user) {
+            // El documento ya existe, solo actualizar el rol
+            const { updateUserDocument } = await import('../../firebase/firestore.service');
+            await updateUserDocument(user.id, { role });
+            updatedUser = { ...user, role };
+          } else {
+            throw new Error('No hay usuario de Google pendiente');
+          }
+
+          set({ user: updatedUser, isAuthenticated: true, isLoading: false, pendingGoogleUser: null });
+          return updatedUser;
         } catch (err) {
           set({ isLoading: false });
           throw err;

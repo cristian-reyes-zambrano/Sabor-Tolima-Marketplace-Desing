@@ -1,6 +1,10 @@
 /**
  * GoogleRoleModal — Selección de rol para usuarios nuevos de Google
- * Se muestra solo la primera vez que alguien se registra con Google
+ *
+ * Se muestra la primera vez que alguien inicia sesión con Google.
+ * El perfil YA está guardado en Firestore con rol 'customer'.
+ * Este modal solo actualiza el rol si el usuario elige 'seller'.
+ * Si cierra el modal sin elegir, queda como 'customer' (sin problema).
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -31,13 +35,19 @@ export function GoogleRoleModal({ open, onClose, userName }: GoogleRoleModalProp
         navigate('/seller-onboarding');
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al completar el registro';
+      const msg = err instanceof Error ? err.message : 'Error al guardar tu perfil';
       toast.error(msg);
     }
   };
 
+  // Si cierra sin elegir, queda como customer — el perfil ya está guardado
+  const handleClose = () => {
+    toast('Perfil guardado como cliente', { icon: '✅', duration: 2000 });
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
         {/* Accesibilidad */}
         <DialogTitle className="sr-only">Seleccionar rol en Sabor Tolima</DialogTitle>
@@ -61,7 +71,6 @@ export function GoogleRoleModal({ open, onClose, userName }: GoogleRoleModalProp
         <div className="p-5 space-y-4">
           {/* Role cards */}
           <div className="grid grid-cols-2 gap-3">
-            {/* Customer */}
             <button
               type="button"
               onClick={() => setSelectedRole('customer')}
@@ -74,10 +83,14 @@ export function GoogleRoleModal({ open, onClose, userName }: GoogleRoleModalProp
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
                 selectedRole === 'customer' ? 'bg-primary' : 'bg-primary/10'
               }`}>
-                <ShoppingBag className={`w-6 h-6 ${selectedRole === 'customer' ? 'text-white' : 'text-primary'}`} />
+                <ShoppingBag className={`w-6 h-6 ${
+                  selectedRole === 'customer' ? 'text-white' : 'text-primary'
+                }`} />
               </div>
               <div>
-                <p className={`text-sm font-bold ${selectedRole === 'customer' ? 'text-primary' : 'text-foreground'}`}>
+                <p className={`text-sm font-bold ${
+                  selectedRole === 'customer' ? 'text-primary' : 'text-foreground'
+                }`}>
                   Quiero comprar
                 </p>
                 <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
@@ -89,7 +102,6 @@ export function GoogleRoleModal({ open, onClose, userName }: GoogleRoleModalProp
               )}
             </button>
 
-            {/* Seller */}
             <button
               type="button"
               onClick={() => setSelectedRole('seller')}
@@ -102,10 +114,14 @@ export function GoogleRoleModal({ open, onClose, userName }: GoogleRoleModalProp
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
                 selectedRole === 'seller' ? 'bg-accent' : 'bg-accent/10'
               }`}>
-                <Store className={`w-6 h-6 ${selectedRole === 'seller' ? 'text-white' : 'text-accent'}`} />
+                <Store className={`w-6 h-6 ${
+                  selectedRole === 'seller' ? 'text-white' : 'text-accent'
+                }`} />
               </div>
               <div>
-                <p className={`text-sm font-bold ${selectedRole === 'seller' ? 'text-accent' : 'text-foreground'}`}>
+                <p className={`text-sm font-bold ${
+                  selectedRole === 'seller' ? 'text-accent' : 'text-foreground'
+                }`}>
                   Quiero vender
                 </p>
                 <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
@@ -118,12 +134,12 @@ export function GoogleRoleModal({ open, onClose, userName }: GoogleRoleModalProp
             </button>
           </div>
 
-          {/* Seller notice */}
           {selectedRole === 'seller' && (
-            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl text-xs text-amber-800 animate-fade-in">
+            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl text-xs text-amber-800">
               <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
               <span>
-                Completarás el perfil de tu restaurante y subirás los documentos requeridos en el siguiente paso.
+                Completarás el perfil de tu restaurante y subirás los documentos
+                requeridos en el siguiente paso.
               </span>
             </div>
           )}
@@ -134,7 +150,7 @@ export function GoogleRoleModal({ open, onClose, userName }: GoogleRoleModalProp
             className="w-full rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold h-11"
           >
             {isLoading ? (
-              <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Configurando cuenta...</>
+              <><Loader2 className="w-4 h-4 animate-spin mr-2" />Guardando...</>
             ) : (
               `Continuar como ${selectedRole === 'seller' ? 'vendedor' : 'cliente'}`
             )}
