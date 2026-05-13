@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AppUser, UserRole } from '../types';
+import type { FirebaseUser } from '../../firebase/auth.service';
 import {
   registerWithEmail,
   loginWithEmail,
   startGoogleRedirect,
   checkRedirectResult,
+  completeGoogleRegistration,
   logoutUser,
   onAuthStateChange,
 } from '../../firebase/auth.service';
@@ -15,24 +17,30 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  // Usuario de Google pendiente de elegir rol (nuevo usuario)
+  pendingGoogleUser: FirebaseUser | null;
 
-  // Acciones basicas
+  // Acciones básicas
   login: (user: AppUser) => void;
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setInitialized: (v: boolean) => void;
   updateUser: (data: Partial<AppUser>) => void;
+  setPendingGoogleUser: (u: FirebaseUser | null) => void;
 
   // Acciones Firebase
   registerUser: (name: string, email: string, password: string, role: UserRole) => Promise<AppUser>;
   loginUser: (email: string, password: string) => Promise<AppUser>;
 
-  // Google: inicia el redirect (redirige la pagina, no retorna usuario)
+  // Google: inicia el redirect (no retorna usuario, redirige la página)
   loginWithGoogle: () => Promise<void>;
 
   // Google: captura el resultado al volver del redirect
-  // Retorna el AppUser si venia de Google, null si es carga normal
-  handleGoogleRedirectResult: () => Promise<AppUser | null>;
+  // Retorna { isNewUser } o null si no hay resultado pendiente
+  handleGoogleRedirectResult: () => Promise<{ isNewUser: boolean } | null>;
+
+  // Completa el registro de un usuario nuevo de Google con el rol elegido
+  completeGoogleSignup: (role: UserRole) => Promise<AppUser>;
 
   // Inicia el listener de onAuthStateChanged
   initAuthListener: () => () => void;
@@ -40,21 +48,23 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
       isInitialized: false,
+      pendingGoogleUser: null,
 
       login: (user) => set({ user, isAuthenticated: true, isLoading: false }),
 
       logout: async () => {
         await logoutUser();
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, pendingGoogleUser: null });
       },
 
       setLoading: (isLoading) => set({ isLoading }),
       setInitialized: (isInitialized) => set({ isInitialized }),
+      setPendingGoogleUser: (pendingGoogleUser) => set({ pendingGoogleUser }),
 
       updateUser: (data) =>
         set((state) => ({
@@ -85,30 +95,52 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      // Inicia el redirect a Google — la pagina se redirige
+      // Inicia el redirect a Google — la página se redirige, no retorna usuario
       loginWithGoogle: async () => {
         set({ isLoading: true });
         try {
           await startGoogleRedirect();
-          // La ejecucion no llega aqui porque la pagina se redirige
+          // La ejecución no llega aquí porque la página se redirige
         } catch (err) {
           set({ isLoading: false });
           throw err;
         }
       },
 
-      // Captura el resultado del redirect y guarda el usuario en el store
+      // Captura el resultado del redirect al volver de Google
       handleGoogleRedirectResult: async () => {
         try {
-          const user = await checkRedirectResult();
-          if (!user) return null;
+          const result = await checkRedirectResult();
+          if (!result) return null; // No venía de un redirect de Google
 
-          // Guardar en el store inmediatamente
-          set({ user, isAuthenticated: true });
-          console.log('[Store] Usuario Google autenticado y guardado:', user.name);
-          return user;
+          if (!result.isNewUser && result.user) {
+            // Usuario existente → login directo
+            set({ user: result.user, isAuthenticated: true });
+            console.log('[Store] Usuario Google existente autenticado:', result.user.name);
+            return { isNewUser: false };
+          }
+
+          // Usuario nuevo → guardar para completar registro con rol
+          set({ pendingGoogleUser: result.firebaseUser });
+          console.log('[Store] Usuario Google nuevo, pendiente de rol');
+          return { isNewUser: true };
         } catch (err) {
           console.error('[Store] Error en handleGoogleRedirectResult:', err);
+          throw err;
+        }
+      },
+
+      completeGoogleSignup: async (role) => {
+        const { pendingGoogleUser } = get();
+        if (!pendingGoogleUser) throw new Error('No hay usuario de Google pendiente');
+
+        set({ isLoading: true });
+        try {
+          const user = await completeGoogleRegistration(pendingGoogleUser, role);
+          set({ user, isAuthenticated: true, isLoading: false, pendingGoogleUser: null });
+          return user;
+        } catch (err) {
+          set({ isLoading: false });
           throw err;
         }
       },
@@ -122,10 +154,10 @@ export const useAuthStore = create<AuthState>()(
               isInitialized: true,
             });
           } else {
-            set((state) => ({
-              ...(state.isInitialized ? { user: null, isAuthenticated: false } : {}),
-              isInitialized: true,
-            }));
+            if (get().isInitialized) {
+              set({ user: null, isAuthenticated: false });
+            }
+            set({ isInitialized: true });
           }
         });
       },
