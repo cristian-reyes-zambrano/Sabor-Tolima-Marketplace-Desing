@@ -7,7 +7,7 @@
  * Flujo Google:
  *   1. startGoogleRedirect()  -> redirige la pagina a Google
  *   2. Google autentica       -> redirige de vuelta a la app
- *   3. checkRedirectResult()  -> captura el resultado al volver
+ *   3. checkRedirectResult()  -> captura el resultado, crea doc en Firestore
  *   4. onAuthStateChanged     -> detecta la sesion activa
  *
  * Configuracion Firebase Console:
@@ -38,6 +38,12 @@ googleProvider.addScope('email');
 googleProvider.addScope('profile');
 
 // ─── Auth State Observer ──────────────────────────────────────────────────────
+/**
+ * Escucha cambios de sesion de Firebase Auth.
+ * Si el usuario tiene sesion pero no tiene documento en Firestore,
+ * lo crea automaticamente con rol 'customer' para que el perfil
+ * siempre quede guardado.
+ */
 export function onAuthStateChange(
   callback: (user: AppUser | null) => void
 ): () => void {
@@ -61,8 +67,9 @@ export function onAuthStateChange(
         return;
       }
 
-      // Sin documento en Firestore: usuario nuevo de Google pendiente de rol
-      const provisional: AppUser = {
+      // No hay documento: crear uno automaticamente para que el perfil se guarde
+      console.log('[Auth] Sin doc en Firestore, creando perfil automatico...');
+      const newUser: AppUser = {
         id: firebaseUser.uid,
         name: firebaseUser.displayName
           ?? firebaseUser.email?.split('@')[0]
@@ -74,21 +81,28 @@ export function onAuthStateChange(
         createdAt: new Date().toISOString(),
       };
 
-      console.log('[Auth] Usuario provisional (sin doc Firestore):', provisional.name);
-      callback(provisional);
+      await createUserDocument(newUser);
+      console.log('[Auth] Perfil creado en Firestore:', newUser.name);
+      callback(newUser);
     } catch (err) {
-      console.error('[Auth] Error al cargar usuario de Firestore:', err);
-      callback(null);
+      console.error('[Auth] Error al cargar/crear usuario en Firestore:', err);
+      // Aunque falle Firestore, devolver datos de Firebase Auth
+      // para que la UI no quede en blanco
+      const fallback: AppUser = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName ?? firebaseUser.email?.split('@')[0] ?? 'Usuario',
+        email: firebaseUser.email ?? '',
+        avatar: firebaseUser.photoURL ?? undefined,
+        role: 'customer',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+      callback(fallback);
     }
   });
 }
 
 // ─── Google: iniciar redirect ─────────────────────────────────────────────────
-/**
- * Redirige la pagina a Google para autenticar.
- * No retorna usuario — la pagina se redirige.
- * El resultado se captura con checkRedirectResult() al volver.
- */
 export async function startGoogleRedirect(): Promise<void> {
   if (!isFirebaseConfigured()) {
     console.log('[Auth Demo] Redirect simulado (Firebase no configurado)');
@@ -96,19 +110,18 @@ export async function startGoogleRedirect(): Promise<void> {
   }
   console.log('[Auth] Iniciando redirect a Google...');
   await signInWithRedirect(auth, googleProvider);
+  // La pagina se redirige — la ejecucion no continua aqui
 }
 
 // ─── Google: capturar resultado del redirect ──────────────────────────────────
 /**
  * Captura el resultado del redirect de Google al volver a la app.
  * Llamar en App.tsx al montar.
+ *
+ * Si es usuario nuevo: crea el documento en Firestore automaticamente.
  * Retorna null si no hay resultado pendiente (carga normal).
  */
-export async function checkRedirectResult(): Promise<{
-  user: AppUser | null;
-  isNewUser: boolean;
-  firebaseUser: FirebaseUser;
-} | null> {
+export async function checkRedirectResult(): Promise<AppUser | null> {
   if (!isFirebaseConfigured()) return null;
 
   try {
@@ -123,15 +136,29 @@ export async function checkRedirectResult(): Promise<{
     const firebaseUser = result.user;
     console.log('[Auth] Redirect exitoso:', firebaseUser.email, firebaseUser.displayName);
 
+    // Verificar si ya existe en Firestore
     const existing = await getUserDocument(firebaseUser.uid);
-
     if (existing) {
       console.log('[Auth] Usuario existente en Firestore:', existing.name);
-      return { user: existing, isNewUser: false, firebaseUser };
+      return existing;
     }
 
-    console.log('[Auth] Usuario nuevo de Google, necesita elegir rol');
-    return { user: null, isNewUser: true, firebaseUser };
+    // Usuario nuevo: crear documento en Firestore ahora mismo
+    const newUser: AppUser = {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName
+        ?? firebaseUser.email?.split('@')[0]
+        ?? 'Usuario',
+      email: firebaseUser.email ?? '',
+      avatar: firebaseUser.photoURL ?? undefined,
+      role: 'customer',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+
+    await createUserDocument(newUser);
+    console.log('[Auth] Nuevo usuario creado en Firestore:', newUser.name);
+    return newUser;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[Auth] Error en getRedirectResult:', msg);
@@ -146,26 +173,6 @@ export async function checkRedirectResult(): Promise<{
     }
     throw err;
   }
-}
-
-// ─── Completar registro Google ────────────────────────────────────────────────
-export async function completeGoogleRegistration(
-  firebaseUser: FirebaseUser,
-  role: UserRole
-): Promise<AppUser> {
-  const appUser: AppUser = {
-    id: firebaseUser.uid,
-    name: firebaseUser.displayName ?? 'Usuario',
-    email: firebaseUser.email ?? '',
-    avatar: firebaseUser.photoURL ?? undefined,
-    role,
-    status: 'active',
-    createdAt: new Date().toISOString(),
-  };
-
-  await createUserDocument(appUser);
-  console.log('[Auth] Registro Google completado con rol:', role);
-  return appUser;
 }
 
 // ─── Email Register ───────────────────────────────────────────────────────────
