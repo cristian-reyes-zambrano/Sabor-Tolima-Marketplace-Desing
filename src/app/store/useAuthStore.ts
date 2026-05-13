@@ -5,7 +5,8 @@ import type { FirebaseUser } from '../../firebase/auth.service';
 import {
   registerWithEmail,
   loginWithEmail,
-  loginWithGoogle as firebaseLoginWithGoogle,
+  startGoogleRedirect,
+  checkRedirectResult,
   completeGoogleRegistration,
   logoutUser,
   onAuthStateChange,
@@ -16,10 +17,10 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
-  // Temporal: usuario de Google pendiente de elegir rol
+  // Usuario de Google pendiente de elegir rol (nuevo usuario)
   pendingGoogleUser: FirebaseUser | null;
 
-  // Actions
+  // Acciones básicas
   login: (user: AppUser) => void;
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
@@ -27,11 +28,21 @@ interface AuthState {
   updateUser: (data: Partial<AppUser>) => void;
   setPendingGoogleUser: (u: FirebaseUser | null) => void;
 
-  // Firebase actions
+  // Acciones Firebase
   registerUser: (name: string, email: string, password: string, role: UserRole) => Promise<AppUser>;
   loginUser: (email: string, password: string) => Promise<AppUser>;
-  loginWithGoogle: () => Promise<{ isNewUser: boolean }>;
+
+  // Google: inicia el redirect (no retorna usuario, redirige la página)
+  loginWithGoogle: () => Promise<void>;
+
+  // Google: captura el resultado al volver del redirect
+  // Retorna { isNewUser } o null si no hay resultado pendiente
+  handleGoogleRedirectResult: () => Promise<{ isNewUser: boolean } | null>;
+
+  // Completa el registro de un usuario nuevo de Google con el rol elegido
   completeGoogleSignup: (role: UserRole) => Promise<AppUser>;
+
+  // Inicia el listener de onAuthStateChanged
   initAuthListener: () => () => void;
 }
 
@@ -84,25 +95,37 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      // Inicia el redirect a Google — la página se redirige, no retorna usuario
       loginWithGoogle: async () => {
         set({ isLoading: true });
         try {
-          const result = await firebaseLoginWithGoogle();
+          await startGoogleRedirect();
+          // La ejecución no llega aquí porque la página se redirige
+        } catch (err) {
+          set({ isLoading: false });
+          throw err;
+        }
+      },
+
+      // Captura el resultado del redirect al volver de Google
+      handleGoogleRedirectResult: async () => {
+        try {
+          const result = await checkRedirectResult();
+          if (!result) return null; // No venía de un redirect de Google
 
           if (!result.isNewUser && result.user) {
             // Usuario existente → login directo
-            set({ user: result.user, isAuthenticated: true, isLoading: false });
+            set({ user: result.user, isAuthenticated: true });
+            console.log('[Store] Usuario Google existente autenticado:', result.user.name);
             return { isNewUser: false };
           }
 
-          // Usuario nuevo → guardar firebase user para completar registro
-          set({
-            pendingGoogleUser: result.firebaseUser,
-            isLoading: false,
-          });
+          // Usuario nuevo → guardar para completar registro con rol
+          set({ pendingGoogleUser: result.firebaseUser });
+          console.log('[Store] Usuario Google nuevo, pendiente de rol');
           return { isNewUser: true };
         } catch (err) {
-          set({ isLoading: false });
+          console.error('[Store] Error en handleGoogleRedirectResult:', err);
           throw err;
         }
       },
@@ -123,9 +146,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       initAuthListener: () => {
-        return onAuthStateChange((user) => {
-          if (user) {
-            set({ user, isAuthenticated: true, isInitialized: true });
+        return onAuthStateChange((firebaseAppUser) => {
+          if (firebaseAppUser) {
+            set({
+              user: firebaseAppUser,
+              isAuthenticated: true,
+              isInitialized: true,
+            });
           } else {
             if (get().isInitialized) {
               set({ user: null, isAuthenticated: false });

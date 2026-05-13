@@ -1,97 +1,154 @@
 /**
- * Firebase Auth Service - Sabor Tolima
- * Maneja autenticación con Email/Password y Google
+ * Firebase Auth Service - Sabor Tolima Marketplace
  *
- * ─── CONFIGURACIÓN GOOGLE LOGIN ────────────────────────────────────────────
- * Para activar Google Login en Firebase Console:
- * 1. Ve a https://console.firebase.google.com
- * 2. Selecciona tu proyecto → Authentication → Sign-in method
- * 3. Habilita "Google" como proveedor
- * 4. Agrega tu dominio en "Authorized domains" (ej: localhost, tu-dominio.com)
- * 5. Guarda los cambios
- * ───────────────────────────────────────────────────────────────────────────
+ * Usa signInWithRedirect (no popup) para compatibilidad con Vercel y Chrome.
+ * El popup falla con COOP: same-origin-allow-popups que Vercel envia por defecto.
+ *
+ * Flujo Google:
+ *   1. startGoogleRedirect()  -> redirige la pagina a Google
+ *   2. Google autentica       -> redirige de vuelta a la app
+ *   3. checkRedirectResult()  -> captura el resultado al volver
+ *   4. onAuthStateChanged     -> detecta la sesion activa
+ *
+ * Configuracion Firebase Console:
+ *   Authentication -> Sign-in method -> Google -> Habilitar
+ *   Authentication -> Settings -> Authorized domains -> agregar tu dominio
  */
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
   updateProfile,
   sendPasswordResetEmail,
   type User as FirebaseUser,
+  type UserCredential,
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from './config';
 import { createUserDocument, getUserDocument } from './firestore.service';
 import type { AppUser, UserRole } from '../app/types';
 
-// ─── Google Provider ─────────────────────────────────────────────────────────
+// ─── Google Provider ──────────────────────────────────────────────────────────
 const googleProvider = new GoogleAuthProvider();
-// Forzar selección de cuenta cada vez (mejor UX)
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
 
-// ─── Auth State Observer ─────────────────────────────────────────────────────
+// ─── Auth State Observer ──────────────────────────────────────────────────────
 export function onAuthStateChange(
   callback: (user: AppUser | null) => void
 ): () => void {
   if (!isFirebaseConfigured()) return () => {};
 
   return onAuthStateChanged(auth, async (firebaseUser) => {
-    if (!firebaseUser) { callback(null); return; }
+    if (!firebaseUser) {
+      console.log('[Auth] Sin sesion activa');
+      callback(null);
+      return;
+    }
+
+    console.log('[Auth] Sesion detectada:', firebaseUser.email);
+
     try {
       const userData = await getUserDocument(firebaseUser.uid);
-      callback(userData ?? null);
-    } catch {
+
+      if (userData) {
+        console.log('[Auth] Usuario cargado desde Firestore:', userData.name);
+        callback(userData);
+        return;
+      }
+
+      // Sin documento en Firestore: usuario nuevo de Google pendiente de rol
+      const provisional: AppUser = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName
+          ?? firebaseUser.email?.split('@')[0]
+          ?? 'Usuario',
+        email: firebaseUser.email ?? '',
+        avatar: firebaseUser.photoURL ?? undefined,
+        role: 'customer',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+
+      console.log('[Auth] Usuario provisional (sin doc Firestore):', provisional.name);
+      callback(provisional);
+    } catch (err) {
+      console.error('[Auth] Error al cargar usuario de Firestore:', err);
       callback(null);
     }
   });
 }
 
-// ─── Google Login ─────────────────────────────────────────────────────────────
+// ─── Google: iniciar redirect ─────────────────────────────────────────────────
 /**
- * Inicia sesión con Google usando popup.
- * Retorna el usuario de Firestore si ya existe,
- * o null si es la primera vez (necesita seleccionar rol).
+ * Redirige la pagina a Google para autenticar.
+ * No retorna usuario — la pagina se redirige.
+ * El resultado se captura con checkRedirectResult() al volver.
  */
-export async function loginWithGoogle(): Promise<{
+export async function startGoogleRedirect(): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    console.log('[Auth Demo] Redirect simulado (Firebase no configurado)');
+    return;
+  }
+  console.log('[Auth] Iniciando redirect a Google...');
+  await signInWithRedirect(auth, googleProvider);
+}
+
+// ─── Google: capturar resultado del redirect ──────────────────────────────────
+/**
+ * Captura el resultado del redirect de Google al volver a la app.
+ * Llamar en App.tsx al montar.
+ * Retorna null si no hay resultado pendiente (carga normal).
+ */
+export async function checkRedirectResult(): Promise<{
   user: AppUser | null;
   isNewUser: boolean;
   firebaseUser: FirebaseUser;
-}> {
-  if (!isFirebaseConfigured()) {
-    // Modo demo
-    await new Promise((r) => setTimeout(r, 800));
-    const demoUser: AppUser = {
-      id: `google-demo-${Date.now()}`,
-      name: 'Usuario Google Demo',
-      email: 'demo@gmail.com',
-      avatar: 'https://lh3.googleusercontent.com/a/default-user',
-      role: 'customer',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-    };
-    return { user: demoUser, isNewUser: false, firebaseUser: {} as FirebaseUser };
+} | null> {
+  if (!isFirebaseConfigured()) return null;
+
+  try {
+    console.log('[Auth] Verificando resultado de redirect...');
+    const result: UserCredential | null = await getRedirectResult(auth);
+
+    if (!result) {
+      console.log('[Auth] Sin resultado de redirect pendiente');
+      return null;
+    }
+
+    const firebaseUser = result.user;
+    console.log('[Auth] Redirect exitoso:', firebaseUser.email, firebaseUser.displayName);
+
+    const existing = await getUserDocument(firebaseUser.uid);
+
+    if (existing) {
+      console.log('[Auth] Usuario existente en Firestore:', existing.name);
+      return { user: existing, isNewUser: false, firebaseUser };
+    }
+
+    console.log('[Auth] Usuario nuevo de Google, necesita elegir rol');
+    return { user: null, isNewUser: true, firebaseUser };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[Auth] Error en getRedirectResult:', msg);
+
+    if (msg.includes('unauthorized-domain')) {
+      throw new Error(
+        'Dominio no autorizado en Firebase. Agrega este dominio en Firebase Console -> Authentication -> Authorized domains.'
+      );
+    }
+    if (msg.includes('network-request-failed')) {
+      throw new Error('Sin conexion a internet. Verifica tu red.');
+    }
+    throw err;
   }
-
-  const result = await signInWithPopup(auth, googleProvider);
-  const firebaseUser = result.user;
-
-  // Verificar si ya existe en Firestore
-  const existing = await getUserDocument(firebaseUser.uid);
-
-  if (existing) {
-    return { user: existing, isNewUser: false, firebaseUser };
-  }
-
-  // Usuario nuevo — necesita elegir rol
-  return { user: null, isNewUser: true, firebaseUser };
 }
 
-/**
- * Completa el registro de un usuario de Google con el rol elegido.
- * Crea el documento en Firestore.
- */
+// ─── Completar registro Google ────────────────────────────────────────────────
 export async function completeGoogleRegistration(
   firebaseUser: FirebaseUser,
   role: UserRole
@@ -107,6 +164,7 @@ export async function completeGoogleRegistration(
   };
 
   await createUserDocument(appUser);
+  console.log('[Auth] Registro Google completado con rol:', role);
   return appUser;
 }
 
@@ -132,6 +190,7 @@ export async function registerWithEmail(
   };
 
   await createUserDocument(appUser);
+  console.log('[Auth] Registro con email exitoso:', email);
   return appUser;
 }
 
@@ -146,6 +205,7 @@ export async function loginWithEmail(
   const userData = await getUserDocument(credential.user.uid);
 
   if (!userData) throw new Error('Usuario no encontrado en la base de datos');
+  console.log('[Auth] Login con email exitoso:', email);
   return userData;
 }
 
@@ -153,6 +213,7 @@ export async function loginWithEmail(
 export async function logoutUser(): Promise<void> {
   if (!isFirebaseConfigured()) return;
   await signOut(auth);
+  console.log('[Auth] Sesion cerrada');
 }
 
 // ─── Password Reset ───────────────────────────────────────────────────────────
@@ -162,17 +223,22 @@ export async function resetPassword(email: string): Promise<void> {
     return;
   }
   await sendPasswordResetEmail(auth, email);
+  console.log('[Auth] Email de recuperacion enviado a:', email);
 }
 
-// ─── Mock helpers (modo demo) ─────────────────────────────────────────────────
+// ─── Mock helpers (modo demo sin Firebase) ────────────────────────────────────
 async function mockRegister(name: string, email: string, role: UserRole): Promise<AppUser> {
   await new Promise((r) => setTimeout(r, 900));
-  return { id: `demo-${Date.now()}`, name, email, role, status: 'active', createdAt: new Date().toISOString() };
+  return {
+    id: `demo-${Date.now()}`, name, email, role,
+    status: 'active', createdAt: new Date().toISOString(),
+  };
 }
 
 async function mockLogin(email: string): Promise<AppUser> {
   await new Promise((r) => setTimeout(r, 700));
-  const role: UserRole = email.includes('seller') || email.includes('vendedor') ? 'seller' : 'customer';
+  const role: UserRole =
+    email.includes('seller') || email.includes('vendedor') ? 'seller' : 'customer';
   return {
     id: `demo-${Date.now()}`,
     name: email.split('@')[0].replace(/[._-]/g, ' '),

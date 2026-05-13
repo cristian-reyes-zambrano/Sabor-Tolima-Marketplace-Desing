@@ -1,11 +1,16 @@
 /**
- * GoogleLoginButton — Botón profesional de inicio de sesión con Google
+ * GoogleLoginButton — Botón de inicio de sesión con Google
+ *
+ * Usa signInWithRedirect (no popup) para compatibilidad con:
+ * - Vercel (cabecera COOP: same-origin-allow-popups)
+ * - Chrome con políticas estrictas de cross-origin
+ * - Safari en iOS
  *
  * ─── DÓNDE MODIFICAR ────────────────────────────────────────────────────────
- * • Logo Google: el SVG inline está en este mismo archivo (busca "GoogleLogo")
- * • Texto del botón: prop `label` (default: "Continuar con Google")
- * • Estilos: clases Tailwind en el <button> de abajo
- * • Lógica: useAuthStore → loginWithGoogle()
+ * • Logo Google: SVG inline en la función GoogleLogo() de este archivo
+ * • Texto: prop `label` (default: "Continuar con Google")
+ * • Estilos: clases Tailwind en el <button>
+ * • Lógica: useAuthStore → loginWithGoogle() → startGoogleRedirect()
  * ────────────────────────────────────────────────────────────────────────────
  */
 import { useState } from 'react';
@@ -13,7 +18,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'sonner';
 
-// ─── Logo oficial de Google (SVG inline, sin dependencias externas) ───────────
+// ─── Logo oficial de Google (SVG inline) ─────────────────────────────────────
 function GoogleLogo({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -58,10 +63,8 @@ export function GoogleLoginButton({
   className = '',
   size = 'md',
 }: GoogleLoginButtonProps) {
-  const { loginWithGoogle, isLoading } = useAuthStore();
-  const [localLoading, setLocalLoading] = useState(false);
-
-  const loading = isLoading || localLoading;
+  const { loginWithGoogle } = useAuthStore();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const sizeClasses = {
     sm: 'h-9 text-xs px-4 gap-2',
@@ -70,19 +73,20 @@ export function GoogleLoginButton({
   };
 
   const handleClick = async () => {
-    if (loading) return;
-    setLocalLoading(true);
+    if (isRedirecting) return;
+    setIsRedirecting(true);
     try {
-      const result = await loginWithGoogle();
-      onSuccess?.(result.isNewUser);
+      // Inicia el redirect — la página se redirige a Google
+      // El resultado se captura en App.tsx → handleGoogleRedirectResult()
+      await loginWithGoogle();
+      // La ejecución no llega aquí porque la página se redirige
     } catch (err: unknown) {
+      setIsRedirecting(false);
       const msg = translateGoogleError(
         err instanceof Error ? err.message : 'Error desconocido'
       );
       toast.error(msg);
       onError?.(msg);
-    } finally {
-      setLocalLoading(false);
     }
   };
 
@@ -90,7 +94,7 @@ export function GoogleLoginButton({
     <button
       type="button"
       onClick={handleClick}
-      disabled={loading}
+      disabled={isRedirecting}
       className={`
         relative w-full flex items-center justify-center
         bg-white border border-[#dadce0] rounded-xl
@@ -106,10 +110,10 @@ export function GoogleLoginButton({
       `}
       aria-label="Iniciar sesión con Google"
     >
-      {loading ? (
+      {isRedirecting ? (
         <>
           <Loader2 className="w-5 h-5 animate-spin text-[#4285F4] shrink-0" />
-          <span>Conectando...</span>
+          <span>Redirigiendo a Google...</span>
         </>
       ) : (
         <>
@@ -121,12 +125,12 @@ export function GoogleLoginButton({
   );
 }
 
-// ─── Traducción de errores de Google/Firebase ─────────────────────────────────
+// ─── Traducción de errores ────────────────────────────────────────────────────
 function translateGoogleError(msg: string): string {
+  if (msg.includes('unauthorized-domain'))
+    return 'Dominio no autorizado. Contacta al administrador.';
   if (msg.includes('popup-closed-by-user') || msg.includes('cancelled-popup-request'))
-    return 'Ventana de Google cerrada. Intenta de nuevo.';
-  if (msg.includes('popup-blocked'))
-    return 'El navegador bloqueó la ventana. Permite popups para este sitio.';
+    return 'Inicio cancelado. Intenta de nuevo.';
   if (msg.includes('account-exists-with-different-credential'))
     return 'Ya existe una cuenta con este correo. Usa email y contraseña.';
   if (msg.includes('network-request-failed'))
@@ -136,6 +140,6 @@ function translateGoogleError(msg: string): string {
   if (msg.includes('user-disabled'))
     return 'Esta cuenta ha sido deshabilitada.';
   if (msg.includes('internal-error'))
-    return 'Error interno. Verifica la configuración de Firebase.';
+    return 'Error interno de Firebase. Verifica la configuración.';
   return 'Error al iniciar sesión con Google. Intenta de nuevo.';
 }

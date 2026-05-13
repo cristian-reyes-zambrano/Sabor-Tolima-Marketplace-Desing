@@ -67,7 +67,7 @@ Crear `src/app/hooks/useAuth.ts`:
 import { useEffect, useState } from 'react';
 import { auth } from '../lib/firebase';
 import {
-  signInWithPopup,
+  signInWithRedirect,
   GoogleAuthProvider,
   signOut,
   User,
@@ -89,7 +89,7 @@ export function useAuth() {
   const loginWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithRedirect(auth, provider);
       return result.user;
     } catch (error) {
       console.error('Login error:', error);

@@ -3,7 +3,7 @@
  * Proyecto: gastronomiatolima-be554
  */
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -28,8 +28,21 @@ export const storage = getStorage(app);
 export default app;
 
 /**
+ * Configura persistencia LOCAL para que la sesión sobreviva
+ * al cerrar y reabrir el navegador / refrescar la página.
+ * Se llama una sola vez al arrancar la app.
+ */
+export async function configurePersistence(): Promise<void> {
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    console.log('[Firebase] Persistencia configurada: browserLocalPersistence');
+  } catch (err) {
+    console.warn('[Firebase] No se pudo configurar persistencia:', err);
+  }
+}
+
+/**
  * Retorna true si las credenciales reales están cargadas.
- * Con .env.local configurado, siempre será true.
  */
 export const isFirebaseConfigured = (): boolean => {
   const key = import.meta.env.VITE_FIREBASE_API_KEY;
