@@ -1,0 +1,354 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+/* =========================
+   BASE
+========================= */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: 'rlig' 1, 'calt' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+/* =========================
+   SCROLLBAR
+========================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted/20;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/80;
+}
+
+/* =========================
+   ANIMACIONES
+========================= */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulseSoft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+/* =========================
+   CLASES DE ANIMACIÓN
+========================= */
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.5s ease-out;
+}
+
+.animate-slide-in-down {
+  animation: slideInDown 0.5s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulseSoft 3s infinite;
+}
+
+/* =========================
+   UTILIDADES UI/UX
+========================= */
+
+@layer utilities {
+  /* Containers */
+  .container-safe {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Textos */
+  .text-hero {
+    @apply text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight;
+  }
+
+  .text-section {
+    @apply text-2xl sm:text-3xl font-semibold;
+  }
+
+  .text-card {
+    @apply text-lg font-medium;
+  }
+
+  /* Gradientes */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-orange-600 via-red-500 to-yellow-500;
+  }
+
+  .gradient-secondary {
+    @apply bg-gradient-to-r from-orange-50 to-yellow-50;
+  }
+
+  /* Sombras */
+  .shadow-soft {
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.08),
+      0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .shadow-card {
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.06);
+  }
+
+  .shadow-hover {
+    box-shadow:
+      0 10px 25px rgba(0, 0, 0, 0.12),
+      0 4px 10px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Hover */
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-hover;
+  }
+
+  .hover-scale {
+    @apply transition-transform duration-300 hover:scale-105;
+  }
+
+  /* Rounded */
+  .rounded-card {
+    @apply rounded-2xl;
+  }
+
+  .rounded-button {
+    @apply rounded-xl;
+  }
+
+  /* Spacing */
+  .section-spacing {
+    @apply py-12 sm:py-16 lg:py-20;
+  }
+
+  .card-spacing {
+    @apply p-4 sm:p-6;
+  }
+
+  /* Grid responsive */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  /* Skeleton */
+  .skeleton {
+    @apply animate-pulse bg-muted rounded-lg;
+  }
+
+  .shimmer {
+    @apply relative overflow-hidden;
+  }
+
+  .shimmer::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent;
+    animation: shimmer 2s infinite;
+  }
+}
+
+/* =========================
+   FORMULARIOS
+========================= */
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  @apply outline-none ring-2 ring-primary ring-offset-2;
+}
+
+::placeholder {
+  color: hsl(var(--muted-foreground) / 0.7);
+}
+
+/* =========================
+   IMÁGENES
+========================= */
+
+img {
+  user-select: none;
+  object-fit: cover;
+}
+/* =========================
+   LINKS
+========================= */
+a {
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: hsl(var(--primary));
+}
+
+/* =========================
+   SELECTION
+========================= */
+
+::selection {
+  background-color: hsl(var(--primary));
+  color: white;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+
+  h1 {
+    @apply text-2xl;
+  }
+
+  h2 {
+    @apply text-xl;
+  }
+
+  h3 {
+    @apply text-lg;
+  }
+}
+
+/* =========================
+   PRINT
+========================= */
+
+@media print {
+  body {
+    @apply bg-card text-black;
+  }
+
+  a {
+    @apply no-underline;
+  }
+  /* =========================================
+   UI/UX PROFESSIONAL TEXT SYSTEM
+========================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: hsl(var(--foreground));
+  letter-spacing: -0.02em;
+}
+
+p {
+  color: hsl(var(--muted-foreground));
+}
+
+span {
+  color: inherit;
+}
+
+input,
+textarea {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--card));
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.card-dark-text {
+  color: hsl(var(--foreground));
+}
+
+.card-muted-text {
+  color: hsl(var(--muted-foreground));
+}
+}

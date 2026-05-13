@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isSeller() {
+      return isAuthenticated() && getUserRole() == 'seller';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Sellers ───────────────────────────────────────────────────────────────
+    match /sellers/{sellerId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(sellerId) && isSeller();
+      allow update: if isOwner(sellerId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Restaurants (public read) ─────────────────────────────────────────────
+    match /restaurants/{restaurantId} {
+      allow read: if true;
+      allow create: if isSeller();
+      allow update: if isAuthenticated() &&
+        get(/databases/$(database)/documents/sellers/$(restaurantId)).data.sellerId == request.auth.uid
+        || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Products (public read) ────────────────────────────────────────────────
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isSeller();
+      allow update: if isSeller() &&
+        resource.data.restaurantId == request.auth.uid || isAdmin();
+      allow delete: if isSeller() &&
+        resource.data.restaurantId == request.auth.uid || isAdmin();
+    }
+
+    // ── Orders ────────────────────────────────────────────────────────────────
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.restaurantId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.restaurantId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ── Favorites ─────────────────────────────────────────────────────────────
+    match /favorites/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}
