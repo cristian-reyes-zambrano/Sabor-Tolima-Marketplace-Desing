@@ -139,45 +139,42 @@ export function Navbar() {
               {/* User */}
               {isAuthenticated && user ? (
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-1.5 rounded-xl text-muted-foreground hover:text-foreground pl-1 focus-visible:ring-0"
+                  <DropdownMenuTrigger
+                    className="flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    {/* Avatar */}
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user.name}
+                        width={28}
+                        height={28}
+                        referrerPolicy="no-referrer"
+                        className="w-7 h-7 rounded-full object-cover ring-2 ring-primary/20 shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const next = e.currentTarget.nextElementSibling as HTMLElement | null;
+                          if (next) next.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      style={{ display: user.avatar ? 'none' : 'flex' }}
+                      className="w-7 h-7 rounded-full bg-primary/10 items-center justify-center shrink-0"
                     >
-                      {/* Avatar: foto de Google o inicial */}
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          width={28}
-                          height={28}
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                            (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
-                          }}
-                          className="w-7 h-7 rounded-full object-cover ring-2 ring-primary/20 shrink-0"
-                        />
-                      ) : null}
-                      {/* Fallback inicial — siempre en DOM, oculto si hay avatar */}
-                      <div
-                        style={{ display: user.avatar ? 'none' : 'flex' }}
-                        className="w-7 h-7 rounded-full bg-primary/10 items-center justify-center shrink-0"
-                      >
-                        <span className="text-xs font-bold text-primary leading-none">
-                          {user.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <span className="hidden lg:inline text-sm max-w-[80px] truncate">
-                        {user.name.split(' ')[0]}
+                      <span className="text-xs font-bold text-primary leading-none">
+                        {user.name.charAt(0).toUpperCase()}
                       </span>
-                      <ChevronDown className="w-3 h-3" />
-                    </Button>
+                    </div>
+                    <span className="hidden lg:inline text-sm max-w-[80px] truncate font-medium">
+                      {user.name.split(' ')[0]}
+                    </span>
+                    <ChevronDown className="w-3 h-3 shrink-0" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1.5 z-[60]">
+
+                  <DropdownMenuContent align="end" className="w-56 rounded-2xl p-1.5">
                     {/* User info header */}
-                    <div className="px-2 py-2 mb-1">
+                    <div className="px-2 py-2.5 mb-1">
                       <div className="flex items-center gap-2.5">
                         {user.avatar ? (
                           <img

@@ -59,48 +59,45 @@ export function onAuthStateChange(
 
     console.log('[Auth] Sesión detectada:', firebaseUser.email);
 
+    // Construir usuario mínimo desde Firebase Auth (siempre disponible, sin red)
+    const authUser: AppUser = {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName
+        ?? firebaseUser.email?.split('@')[0]
+        ?? 'Usuario',
+      email: firebaseUser.email ?? '',
+      avatar: firebaseUser.photoURL ?? undefined,
+      role: 'customer',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+
+    // Emitir inmediatamente con datos de Auth para que la UI no quede en blanco
+    callback(authUser);
+
+    // Intentar enriquecer con datos de Firestore (rol, teléfono, etc.)
     try {
       const userData = await getUserDocument(firebaseUser.uid);
 
       if (userData) {
-        console.log('[Auth] Usuario cargado desde Firestore:', userData.name);
+        console.log('[Auth] Usuario enriquecido desde Firestore:', userData.name);
         callback(userData);
         return;
       }
 
-      // Sin documento: crear uno automáticamente para que el perfil persista
-      const newUser: AppUser = {
-        id: firebaseUser.uid,
-        name: firebaseUser.displayName
-          ?? firebaseUser.email?.split('@')[0]
-          ?? 'Usuario',
-        email: firebaseUser.email ?? '',
-        avatar: firebaseUser.photoURL ?? undefined,
-        role: 'customer',
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      };
-
-      await createUserDocument(newUser);
-      console.log('[Auth] Documento creado automáticamente para:', newUser.name);
-      callback(newUser);
+      // Sin documento en Firestore: crear uno con los datos de Auth
+      await createUserDocument(authUser);
+      console.log('[Auth] Documento creado automáticamente para:', authUser.name);
+      // authUser ya fue emitido arriba, no hace falta volver a llamar callback
     } catch (err) {
-      console.error('[Auth] Error al cargar/crear usuario de Firestore:', err);
-      // Fallback: devolver datos mínimos de Firebase Auth para no dejar la UI en blanco
-      if (firebaseUser.email) {
-        const fallback: AppUser = {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName ?? firebaseUser.email.split('@')[0],
-          email: firebaseUser.email,
-          avatar: firebaseUser.photoURL ?? undefined,
-          role: 'customer',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        };
-        callback(fallback);
+      // Firestore offline o error de red — no pasa nada, ya emitimos authUser arriba
+      const code = (err as { code?: string })?.code ?? '';
+      if (code === 'unavailable' || String(err).includes('offline')) {
+        console.warn('[Auth] Firestore offline — usando datos de Firebase Auth');
       } else {
-        callback(null);
+        console.error('[Auth] Error al cargar usuario de Firestore:', err);
       }
+      // NO llamar callback(null) — el usuario de Auth sigue válido
     }
   });
 }
