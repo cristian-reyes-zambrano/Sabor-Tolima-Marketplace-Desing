@@ -1,3 +1,16 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+@import 'leaflet/dist/leaflet.css';
+
+/* Fix Leaflet z-index con el header sticky */
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}
+.leaflet-pane {
+  z-index: 5 !important;
+}
+.leaflet-control {
+  z-index: 10 !important;
+}

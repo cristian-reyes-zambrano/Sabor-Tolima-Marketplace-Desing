@@ -19,18 +19,33 @@ function figmaAssetResolver() {
 export default defineConfig({
   plugins: [
     figmaAssetResolver(),
-    // The React and Tailwind plugins are both required for Make, even if
-    // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
   ],
   resolve: {
     alias: {
-      // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
     },
   },
-
-  // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core — cargado primero
+          'vendor-react': ['react', 'react-dom', 'react-router'],
+          // Firebase — chunk separado
+          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          // Leaflet — chunk separado (pesado, solo se carga en /map)
+          'vendor-leaflet': ['leaflet', 'react-leaflet'],
+          // UI components
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', 'sonner', 'lucide-react'],
+          // Charts y extras
+          'vendor-charts': ['recharts'],
+        },
+      },
+    },
+    // Aumentar el límite de warning a 600kb
+    chunkSizeWarningLimit: 600,
+  },
 })

@@ -12,6 +12,7 @@ import SellerOnboarding from './pages/SellerOnboarding';
 import SellerDashboard from './pages/SellerDashboard';
 import LogisticsMap from './pages/LogisticsMap';
 import MapPage from './pages/MapPage';
+import LeafletMap from './pages/LeafletMap';
 
 export const router = createBrowserRouter([
   // ── Public routes ──────────────────────────────────────────────────────────
@@ -20,7 +21,7 @@ export const router = createBrowserRouter([
   { path: '/role-selection', Component: RoleSelection },
   { path: '/restaurant/:id', Component: RestaurantProfile },
   { path: '/logistics', Component: LogisticsMap },
-  { path: '/map', Component: MapPage },
+  { path: '/map', Component: LeafletMap },
 
   // ── Customer routes (require auth) ─────────────────────────────────────────
   { path: '/cart', Component: Cart },
