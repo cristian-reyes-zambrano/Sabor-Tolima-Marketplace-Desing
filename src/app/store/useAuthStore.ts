@@ -5,7 +5,7 @@ import type { FirebaseUser } from '../../firebase/auth.service';
 import {
   registerWithEmail,
   loginWithEmail,
-  startGoogleRedirect,
+  loginWithGooglePopupOrRedirect,
   checkRedirectResult,
   completeGoogleRegistration,
   logoutUser,
@@ -32,11 +32,17 @@ interface AuthState {
   registerUser: (name: string, email: string, password: string, role: UserRole) => Promise<AppUser>;
   loginUser: (email: string, password: string) => Promise<AppUser>;
 
-  // Google: inicia el redirect (no retorna usuario, redirige la página)
-  loginWithGoogle: () => Promise<void>;
+  /**
+   * Google: intenta popup, cae a redirect si el popup es bloqueado.
+   * - Si popup OK → retorna { user, isNewUser } y actualiza el estado.
+   * - Si redirect iniciado → retorna null (la página se recargará).
+   */
+  loginWithGoogle: () => Promise<{ user: AppUser; isNewUser: boolean } | null>;
 
-  // Google: captura el resultado al volver del redirect
-  // Retorna { isNewUser } o null si no hay resultado pendiente
+  /**
+   * Captura el resultado del redirect al volver de Google.
+   * Retorna { isNewUser } o null si no venía de un redirect.
+   */
   handleGoogleRedirectResult: () => Promise<{ isNewUser: boolean } | null>;
 
   // Completa el registro de un usuario nuevo de Google con el rol elegido
@@ -95,33 +101,45 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      // Inicia el redirect a Google — la página se redirige, no retorna usuario
       loginWithGoogle: async () => {
         set({ isLoading: true });
         try {
-          await startGoogleRedirect();
-          // La ejecución no llega aquí porque la página se redirige
+          const result = await loginWithGooglePopupOrRedirect();
+
+          if (!result) {
+            // Redirect iniciado — la página se recargará, no limpiar isLoading
+            // para que el spinner se mantenga visible durante la redirección
+            return null;
+          }
+
+          // Popup exitoso
+          set({
+            user: result.user,
+            isAuthenticated: true,
+            isLoading: false,
+            ...(result.isNewUser ? { pendingGoogleUser: null } : {}),
+          });
+
+          console.log('[Store] Google popup exitoso:', result.user.name);
+          return result;
         } catch (err) {
           set({ isLoading: false });
           throw err;
         }
       },
 
-      // Captura el resultado del redirect al volver de Google
       handleGoogleRedirectResult: async () => {
         try {
           const result = await checkRedirectResult();
-          if (!result) return null; // No venía de un redirect de Google
+          if (!result) return null;
 
-          // El usuario siempre viene guardado en Firestore desde checkRedirectResult()
-          set({ user: result.user, isAuthenticated: true });
-          console.log('[Store] Usuario Google autenticado:', result.user.name);
+          set({
+            user: result.user,
+            isAuthenticated: true,
+            ...(result.isNewUser ? { pendingGoogleUser: result.firebaseUser } : {}),
+          });
 
-          if (result.isNewUser) {
-            // Guardar firebaseUser por si quiere cambiar a rol vendedor
-            set({ pendingGoogleUser: result.firebaseUser });
-          }
-
+          console.log('[Store] Google redirect exitoso:', result.user.name);
           return { isNewUser: result.isNewUser };
         } catch (err) {
           console.error('[Store] Error en handleGoogleRedirectResult:', err);
@@ -137,10 +155,8 @@ export const useAuthStore = create<AuthState>()(
           let updatedUser: AppUser;
 
           if (pendingGoogleUser) {
-            // Actualizar el documento ya creado con el rol elegido
             updatedUser = await completeGoogleRegistration(pendingGoogleUser, role);
           } else if (user) {
-            // El documento ya existe, solo actualizar el rol
             const { updateUserDocument } = await import('../../firebase/firestore.service');
             await updateUserDocument(user.id, { role });
             updatedUser = { ...user, role };
@@ -148,7 +164,12 @@ export const useAuthStore = create<AuthState>()(
             throw new Error('No hay usuario de Google pendiente');
           }
 
-          set({ user: updatedUser, isAuthenticated: true, isLoading: false, pendingGoogleUser: null });
+          set({
+            user: updatedUser,
+            isAuthenticated: true,
+            isLoading: false,
+            pendingGoogleUser: null,
+          });
           return updatedUser;
         } catch (err) {
           set({ isLoading: false });

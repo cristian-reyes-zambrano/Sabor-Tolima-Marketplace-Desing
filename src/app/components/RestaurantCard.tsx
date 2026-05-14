@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { useFavoritesStore } from '../store/useFavoritesStore';
+import { SafeImage } from './SafeImage';
 import { toast } from 'sonner';
 import type { Restaurant } from '../types';
 
@@ -56,9 +57,10 @@ export function RestaurantCard({
     >
       {/* Image */}
       <div className="relative h-48 overflow-hidden bg-muted">
-        <img
+        <SafeImage
           src={image}
           alt={name}
+          type="restaurant"
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />

@@ -13,6 +13,7 @@ import { ReviewSection } from '../components/reviews/ReviewSection';
 import { getRestaurantById } from '../data/restaurants';
 import { getMenuByRestaurant } from '../data/menu';
 import { useCartStore } from '../store/useCartStore';
+import { SafeImage } from '../components/SafeImage';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { AuthModal } from '../components/auth/AuthModal';
@@ -150,9 +151,10 @@ function MenuItemCard({
 
             {/* Image */}
             <div className="w-28 h-28 sm:w-32 sm:h-32 shrink-0 relative">
-              <img
+              <SafeImage
                 src={item.image}
                 alt={item.name}
+                type="product"
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
@@ -238,9 +240,10 @@ export default function RestaurantProfile() {
     <div className="min-h-screen bg-[#FAFAFA] pb-24">
       {/* Banner */}
       <div className="relative h-56 sm:h-72 overflow-hidden">
-        <img
+        <SafeImage
           src={restaurant.bannerImage}
           alt={restaurant.name}
+          type="restaurant"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />

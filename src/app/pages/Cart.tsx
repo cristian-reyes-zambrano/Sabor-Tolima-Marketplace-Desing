@@ -12,6 +12,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Navbar } from '../components/Navbar';
 import { AuthModal } from '../components/auth/AuthModal';
 import { SpecialInstructions } from '../components/cart/SpecialInstructions';
+import { SafeImage } from '../components/SafeImage';
 import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { toast } from 'sonner';
@@ -130,7 +131,7 @@ export default function Cart() {
                 <CardContent className="space-y-4">
                   {items.map((item) => (
                     <div key={item.id} className="flex gap-3 pb-4 border-b border-border last:border-0 last:pb-0">
-                      <img src={item.image} alt={item.name} className="w-16 h-16 rounded-xl object-cover shrink-0" loading="lazy" />
+                      <SafeImage src={item.image} alt={item.name} type="product" className="w-16 h-16 rounded-xl object-cover shrink-0" loading="lazy" />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-sm text-foreground truncate">{item.name}</h3>
                         <p className="text-sm font-bold text-primary mt-0.5">${item.price.toLocaleString()}</p>

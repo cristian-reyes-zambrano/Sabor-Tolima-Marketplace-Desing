@@ -21,6 +21,7 @@ import { Badge } from '../components/ui/badge';
 import { useAuthStore } from '../store/useAuthStore';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { AuthModal } from '../components/auth/AuthModal';
+import { AvatarImage } from '../components/SafeImage';
 import { toast } from 'sonner';
 
 export default function Profile() {
@@ -123,18 +124,14 @@ export default function Profile() {
           <CardContent className="px-5 pb-5">
             <div className="flex items-end justify-between -mt-10 mb-4">
               <div className="w-20 h-20 rounded-2xl bg-white border-4 border-white shadow-lg overflow-hidden flex items-center justify-center">
-                {user.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <span className="text-3xl font-bold text-primary">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
-                )}
+                <AvatarImage
+                  src={user.avatar}
+                  alt={user.name}
+                  size={80}
+                  initial={user.name}
+                  initialClassName="text-3xl"
+                  className="rounded-2xl"
+                />
               </div>
               <Button
                 variant="outline"

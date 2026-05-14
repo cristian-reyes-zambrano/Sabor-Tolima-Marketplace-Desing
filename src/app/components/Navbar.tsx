@@ -26,6 +26,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useCartStore } from '../store/useCartStore';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { AuthModal } from './auth/AuthModal';
+import { AvatarImage } from './SafeImage';
 import { toast } from 'sonner';
 
 export function Navbar() {
@@ -146,20 +147,14 @@ export function Navbar() {
                       className="gap-1.5 rounded-xl text-muted-foreground hover:text-foreground pl-1"
                     >
                       {/* Avatar: foto de Google o inicial */}
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="w-7 h-7 rounded-full object-cover ring-2 ring-primary/20"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-xs font-bold text-primary">
-                            {user.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      )}
+                      <AvatarImage
+                        src={user.avatar}
+                        alt={user.name}
+                        size={28}
+                        initial={user.name}
+                        initialClassName="text-xs"
+                        className="ring-2 ring-primary/20"
+                      />
                       <span className="hidden lg:inline text-sm max-w-[80px] truncate">
                         {user.name.split(' ')[0]}
                       </span>
@@ -170,17 +165,13 @@ export function Navbar() {
                     {/* User info header */}
                     <div className="px-2 py-2 mb-1">
                       <div className="flex items-center gap-2.5">
-                        {user.avatar ? (
-                          <img src={user.avatar} alt={user.name}
-                            className="w-9 h-9 rounded-full object-cover shrink-0"
-                            referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <span className="text-sm font-bold text-primary">
-                              {user.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        )}
+                        <AvatarImage
+                          src={user.avatar}
+                          alt={user.name}
+                          size={36}
+                          initial={user.name}
+                          initialClassName="text-sm"
+                        />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
                           <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>

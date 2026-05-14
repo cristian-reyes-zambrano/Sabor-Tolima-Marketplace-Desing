@@ -1,17 +1,10 @@
 /**
  * AuthModal — Modal de autenticación con Email y Google
  *
- * ─── DÓNDE MODIFICAR ────────────────────────────────────────────────────────
- * • Botón Google  → ./GoogleLoginButton.tsx
- * • Logo header   → icono <ChefHat> en el bloque "Header gradient"
- * • Colores       → clases `from-[#c62828] to-[#e65100]`
- * • Textos        → strings en este mismo archivo
- * • Lógica roles  → handleLogin / handleRegister
- *
- * NOTA: el flujo de Google usa signInWithRedirect.
- * El resultado del redirect lo captura App.tsx → handleGoogleRedirectResult().
- * El GoogleRoleModal (para usuarios nuevos) también lo muestra App.tsx.
- * ────────────────────────────────────────────────────────────────────────────
+ * Flujo Google:
+ *   - Popup exitoso con usuario existente → cierra modal, toast bienvenida.
+ *   - Popup exitoso con usuario nuevo     → cierra modal, abre GoogleRoleModal.
+ *   - Popup bloqueado (COOP/Vercel)       → cae a redirect, página se recarga.
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -24,6 +17,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import { GoogleLoginButton } from './GoogleLoginButton';
+import { GoogleRoleModal } from './GoogleRoleModal';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'sonner';
 import type { UserRole } from '../../types';
@@ -46,7 +40,7 @@ export function AuthModal({
   forceRole,
 }: AuthModalProps) {
   const navigate = useNavigate();
-  const { registerUser, loginUser, isLoading } = useAuthStore();
+  const { registerUser, loginUser, isLoading, user } = useAuthStore();
 
   const [step, setStep] = useState<AuthStep>(
     defaultMode === 'register' ? 'role' : 'login'
@@ -56,6 +50,8 @@ export function AuthModal({
   const [showConfirm, setShowConfirm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Modal de rol para usuarios nuevos de Google (popup exitoso)
+  const [showRoleModal, setShowRoleModal] = useState(false);
 
   // ── Validación ──────────────────────────────────────────────────────────────
   const validate = (isRegister: boolean) => {
@@ -115,9 +111,21 @@ export function AuthModal({
     onClose();
   };
 
+  // ── Google popup exitoso ────────────────────────────────────────────────────
+  const handleGoogleSuccess = (isNewUser: boolean) => {
+    if (isNewUser) {
+      // Cerrar AuthModal y abrir GoogleRoleModal
+      onClose();
+      setShowRoleModal(true);
+    } else {
+      onClose();
+    }
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+    <>
+      <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
         {/* Accesibilidad */}
         <DialogTitle className="sr-only">
@@ -196,7 +204,7 @@ export function AuthModal({
               <DividerOr />
 
               {/* Google redirige la página — el resultado lo captura App.tsx */}
-              <GoogleLoginButton label="Registrarse con Google" />
+              <GoogleLoginButton label="Registrarse con Google" onSuccess={handleGoogleSuccess} />
 
               <div className="text-center">
                 <button
@@ -214,7 +222,7 @@ export function AuthModal({
           {step === 'login' && (
             <div className="space-y-4">
               {/* Google primero — mejor UX */}
-              <GoogleLoginButton />
+              <GoogleLoginButton onSuccess={handleGoogleSuccess} />
 
               <DividerOr />
 
@@ -331,7 +339,15 @@ export function AuthModal({
           )}
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      {/* Modal de rol para usuarios nuevos de Google (popup exitoso) */}
+      <GoogleRoleModal
+        open={showRoleModal}
+        onClose={() => setShowRoleModal(false)}
+        userName={user?.name ?? undefined}
+      />
+    </>
   );
 }
 

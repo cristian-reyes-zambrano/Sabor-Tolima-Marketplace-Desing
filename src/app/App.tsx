@@ -9,13 +9,16 @@ import { GoogleRoleModal } from './components/auth/GoogleRoleModal';
 /**
  * App — Punto de entrada principal
  *
- * Secuencia de inicializacion al montar:
- *   1. configurePersistence()        → sesion persiste en localStorage
- *   2. handleGoogleRedirectResult()  → captura resultado si viene de Google
- *   3. initAuthListener()            → escucha cambios de sesion en tiempo real
+ * Secuencia de inicialización al montar:
+ *   1. configurePersistence()       → sesión persiste en localStorage
+ *   2. handleGoogleRedirectResult() → captura resultado si viene de redirect de Google
+ *   3. initAuthListener()           → escucha onAuthStateChanged en tiempo real
  *
- * El GoogleRoleModal vive aqui (nivel raiz) para que aparezca correctamente
- * despues del redirect de Google, cuando el AuthModal ya no esta abierto.
+ * El flujo Google usa popup primero; si el popup es bloqueado (COOP/Vercel/Safari)
+ * cae automáticamente a redirect. El resultado del redirect se captura aquí.
+ *
+ * GoogleRoleModal vive a nivel raíz para aparecer correctamente después del
+ * redirect, cuando el AuthModal ya no está abierto.
  */
 export default function App() {
   const {
@@ -23,13 +26,13 @@ export default function App() {
     setInitialized,
     handleGoogleRedirectResult,
     pendingGoogleUser,
+    user,
   } = useAuthStore();
 
   const [showRoleModal, setShowRoleModal] = useState(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
-      // Modo demo: no hay Firebase, marcar como inicializado de inmediato
       setInitialized(true);
       return;
     }
@@ -37,15 +40,14 @@ export default function App() {
     let unsubscribe: (() => void) | undefined;
 
     const init = async () => {
-      // 1. Persistencia local — la sesion sobrevive al refrescar la pagina
+      // 1. Persistencia local — la sesión sobrevive al refrescar
       await configurePersistence();
 
-      // 2. Capturar resultado del redirect de Google (si la pagina viene de uno)
+      // 2. Capturar resultado del redirect de Google (si la página viene de uno)
       try {
         const redirectResult = await handleGoogleRedirectResult();
 
         if (redirectResult?.isNewUser) {
-          // Primera vez con Google → pedir que elija rol
           setShowRoleModal(true);
         } else if (redirectResult && !redirectResult.isNewUser) {
           toast.success('¡Bienvenido de nuevo! 👋');
@@ -71,12 +73,12 @@ export default function App() {
     <>
       <RouterProvider router={router} />
 
-      {/* Modal de seleccion de rol para usuarios nuevos de Google (post-redirect) */}
+      {/* Modal de selección de rol para usuarios nuevos de Google */}
       {showRoleModal && (
         <GoogleRoleModal
           open={showRoleModal}
           onClose={() => setShowRoleModal(false)}
-          userName={pendingGoogleUser?.displayName ?? undefined}
+          userName={pendingGoogleUser?.displayName ?? user?.name ?? undefined}
         />
       )}
 

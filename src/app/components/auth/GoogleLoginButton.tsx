@@ -1,17 +1,12 @@
 /**
  * GoogleLoginButton — Botón de inicio de sesión con Google
  *
- * Usa signInWithRedirect (no popup) para compatibilidad con:
- * - Vercel (cabecera COOP: same-origin-allow-popups)
- * - Chrome con políticas estrictas de cross-origin
- * - Safari en iOS
- *
- * ─── DÓNDE MODIFICAR ────────────────────────────────────────────────────────
- * • Logo Google: SVG inline en la función GoogleLogo() de este archivo
- * • Texto: prop `label` (default: "Continuar con Google")
- * • Estilos: clases Tailwind en el <button>
- * • Lógica: useAuthStore → loginWithGoogle() → startGoogleRedirect()
- * ────────────────────────────────────────────────────────────────────────────
+ * Flujo:
+ *   1. Intenta signInWithPopup (mejor UX, sin recarga).
+ *   2. Si el popup es bloqueado (COOP/Vercel/Safari), cae a signInWithRedirect.
+ *      En ese caso la página se recarga y App.tsx captura el resultado.
+ *   3. Si el popup tiene éxito, llama onSuccess(isNewUser) para que el padre
+ *      decida qué hacer (mostrar modal de rol, toast de bienvenida, etc.).
  */
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -50,6 +45,7 @@ function GoogleLogo({ size = 20 }: { size?: number }) {
 
 interface GoogleLoginButtonProps {
   label?: string;
+  /** Llamado cuando el popup tiene éxito. No se llama si se inició un redirect. */
   onSuccess?: (isNewUser: boolean) => void;
   onError?: (error: string) => void;
   className?: string;
@@ -64,7 +60,7 @@ export function GoogleLoginButton({
   size = 'md',
 }: GoogleLoginButtonProps) {
   const { loginWithGoogle } = useAuthStore();
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isPending, setIsPending] = useState(false);
 
   const sizeClasses = {
     sm: 'h-9 text-xs px-4 gap-2',
@@ -73,15 +69,26 @@ export function GoogleLoginButton({
   };
 
   const handleClick = async () => {
-    if (isRedirecting) return;
-    setIsRedirecting(true);
+    if (isPending) return;
+    setIsPending(true);
+
     try {
-      // Inicia el redirect — la página se redirige a Google
-      // El resultado se captura en App.tsx → handleGoogleRedirectResult()
-      await loginWithGoogle();
-      // La ejecución no llega aquí porque la página se redirige
+      const result = await loginWithGoogle();
+
+      if (!result) {
+        // Redirect iniciado — la página se recargará, mantener spinner
+        return;
+      }
+
+      // Popup exitoso
+      if (result.isNewUser) {
+        onSuccess?.(true);
+      } else {
+        toast.success(`¡Bienvenido de nuevo, ${result.user.name.split(' ')[0]}! 👋`);
+        onSuccess?.(false);
+      }
     } catch (err: unknown) {
-      setIsRedirecting(false);
+      setIsPending(false);
       const msg = translateGoogleError(
         err instanceof Error ? err.message : 'Error desconocido'
       );
@@ -89,6 +96,8 @@ export function GoogleLoginButton({
       onError?.(msg);
     }
   };
+
+  const isRedirecting = isPending;
 
   return (
     <button
@@ -113,7 +122,7 @@ export function GoogleLoginButton({
       {isRedirecting ? (
         <>
           <Loader2 className="w-5 h-5 animate-spin text-[#4285F4] shrink-0" />
-          <span>Redirigiendo a Google...</span>
+          <span>Conectando con Google...</span>
         </>
       ) : (
         <>
@@ -129,8 +138,6 @@ export function GoogleLoginButton({
 function translateGoogleError(msg: string): string {
   if (msg.includes('unauthorized-domain'))
     return 'Dominio no autorizado. Contacta al administrador.';
-  if (msg.includes('popup-closed-by-user') || msg.includes('cancelled-popup-request'))
-    return 'Inicio cancelado. Intenta de nuevo.';
   if (msg.includes('account-exists-with-different-credential'))
     return 'Ya existe una cuenta con este correo. Usa email y contraseña.';
   if (msg.includes('network-request-failed'))

@@ -1,22 +1,21 @@
 /**
  * Firebase Auth Service - Sabor Tolima Marketplace
  *
- * Usa signInWithRedirect (no popup) para compatibilidad con Vercel y Chrome.
- * El popup falla con COOP: same-origin-allow-popups que Vercel envia por defecto.
+ * Estrategia Google:
+ *   - Intenta signInWithPopup primero (mejor UX, sin recarga de página).
+ *   - Si el popup falla por COOP/cross-origin (Vercel, Safari), cae
+ *     automáticamente a signInWithRedirect.
+ *   - checkRedirectResult() captura el resultado del redirect al volver.
+ *   - onAuthStateChanged mantiene la sesión sincronizada siempre.
  *
- * Flujo Google:
- *   1. startGoogleRedirect()  -> redirige la pagina a Google
- *   2. Google autentica       -> redirige de vuelta a la app
- *   3. checkRedirectResult()  -> captura el resultado al volver
- *   4. onAuthStateChanged     -> detecta la sesion activa
- *
- * Configuracion Firebase Console:
- *   Authentication -> Sign-in method -> Google -> Habilitar
- *   Authentication -> Settings -> Authorized domains -> agregar tu dominio
+ * Configuración Firebase Console:
+ *   Authentication → Sign-in method → Google → Habilitar
+ *   Authentication → Settings → Authorized domains → agregar tu dominio
  */
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   GoogleAuthProvider,
@@ -37,6 +36,14 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
 
+// ─── Errores que indican que el popup fue bloqueado por COOP/browser ──────────
+const POPUP_BLOCKED_ERRORS = [
+  'auth/popup-blocked',
+  'auth/popup-closed-by-user',
+  'auth/cancelled-popup-request',
+  'auth/operation-not-supported-in-this-environment',
+];
+
 // ─── Auth State Observer ──────────────────────────────────────────────────────
 export function onAuthStateChange(
   callback: (user: AppUser | null) => void
@@ -45,12 +52,12 @@ export function onAuthStateChange(
 
   return onAuthStateChanged(auth, async (firebaseUser) => {
     if (!firebaseUser) {
-      console.log('[Auth] Sin sesion activa');
+      console.log('[Auth] Sin sesión activa');
       callback(null);
       return;
     }
 
-    console.log('[Auth] Sesion detectada:', firebaseUser.email);
+    console.log('[Auth] Sesión detectada:', firebaseUser.email);
 
     try {
       const userData = await getUserDocument(firebaseUser.uid);
@@ -61,9 +68,7 @@ export function onAuthStateChange(
         return;
       }
 
-      // No hay documento: crear uno ahora para que el perfil siempre persista.
-      // Esto cubre el caso de usuarios que autenticaron antes de que existiera
-      // la logica de guardado, o si Firestore fallo durante el redirect.
+      // Sin documento: crear uno automáticamente para que el perfil persista
       const newUser: AppUser = {
         id: firebaseUser.uid,
         name: firebaseUser.displayName
@@ -77,12 +82,11 @@ export function onAuthStateChange(
       };
 
       await createUserDocument(newUser);
-      console.log('[Auth] Documento creado automaticamente para:', newUser.name);
+      console.log('[Auth] Documento creado automáticamente para:', newUser.name);
       callback(newUser);
     } catch (err) {
       console.error('[Auth] Error al cargar/crear usuario de Firestore:', err);
-      // Si Firestore falla, devolver datos minimos de Firebase Auth
-      // para que la UI no quede en blanco con sesion activa
+      // Fallback: devolver datos mínimos de Firebase Auth para no dejar la UI en blanco
       if (firebaseUser.email) {
         const fallback: AppUser = {
           id: firebaseUser.uid,
@@ -101,19 +105,78 @@ export function onAuthStateChange(
   });
 }
 
-// ─── Google: iniciar redirect ─────────────────────────────────────────────────
+// ─── Google: popup con fallback a redirect ────────────────────────────────────
 /**
- * Redirige la pagina a Google para autenticar.
- * No retorna usuario — la pagina se redirige.
- * El resultado se captura con checkRedirectResult() al volver.
+ * Intenta autenticar con popup.
+ * Si el popup es bloqueado (COOP, Safari, Vercel), cae a redirect.
+ *
+ * Retorna AppUser si el popup tuvo éxito.
+ * Retorna null si se inició un redirect (la página se recargará).
  */
-export async function startGoogleRedirect(): Promise<void> {
+export async function loginWithGooglePopupOrRedirect(): Promise<{
+  user: AppUser;
+  isNewUser: boolean;
+} | null> {
   if (!isFirebaseConfigured()) {
-    console.log('[Auth Demo] Redirect simulado (Firebase no configurado)');
-    return;
+    // Modo demo
+    await new Promise((r) => setTimeout(r, 800));
+    const demoUser: AppUser = {
+      id: 'demo-google',
+      name: 'Usuario Demo',
+      email: 'demo@sabortolima.co',
+      avatar: undefined,
+      role: 'customer',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+    return { user: demoUser, isNewUser: false };
   }
-  console.log('[Auth] Iniciando redirect a Google...');
-  await signInWithRedirect(auth, googleProvider);
+
+  try {
+    console.log('[Auth] Intentando popup de Google...');
+    const result: UserCredential = await signInWithPopup(auth, googleProvider);
+    const firebaseUser = result.user;
+    console.log('[Auth] Popup exitoso:', firebaseUser.email);
+
+    const existing = await getUserDocument(firebaseUser.uid);
+
+    if (existing) {
+      return { user: existing, isNewUser: false };
+    }
+
+    // Usuario nuevo: crear documento con rol customer
+    const newUser: AppUser = {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName
+        ?? firebaseUser.email?.split('@')[0]
+        ?? 'Usuario',
+      email: firebaseUser.email ?? '',
+      avatar: firebaseUser.photoURL ?? undefined,
+      role: 'customer',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+
+    await createUserDocument(newUser);
+    console.log('[Auth] Nuevo usuario Google guardado:', newUser.name);
+    return { user: newUser, isNewUser: true };
+
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code ?? '';
+    const msg = err instanceof Error ? err.message : String(err);
+
+    const isPopupBlocked = POPUP_BLOCKED_ERRORS.some((e) => code.includes(e) || msg.includes(e));
+
+    if (isPopupBlocked) {
+      // El popup fue bloqueado → caer a redirect silenciosamente
+      console.warn('[Auth] Popup bloqueado, usando redirect como fallback...');
+      await signInWithRedirect(auth, googleProvider);
+      return null; // La página se recargará
+    }
+
+    // Error real (dominio no autorizado, red, etc.)
+    throw translateAuthError(err);
+  }
 }
 
 // ─── Google: capturar resultado del redirect ──────────────────────────────────
@@ -121,12 +184,6 @@ export async function startGoogleRedirect(): Promise<void> {
  * Captura el resultado del redirect de Google al volver a la app.
  * Llamar en App.tsx al montar.
  * Retorna null si no hay resultado pendiente (carga normal).
- *
- * COMPORTAMIENTO:
- * - Usuario existente en Firestore → retorna sus datos directamente.
- * - Usuario NUEVO → crea el documento en Firestore con rol 'customer'
- *   y retorna isNewUser:true para que la UI ofrezca cambiar a vendedor.
- *   El perfil SIEMPRE se guarda, independientemente de si elige rol o no.
  */
 export async function checkRedirectResult(): Promise<{
   user: AppUser;
@@ -147,7 +204,6 @@ export async function checkRedirectResult(): Promise<{
     const firebaseUser = result.user;
     console.log('[Auth] Redirect exitoso:', firebaseUser.email, firebaseUser.displayName);
 
-    // Verificar si ya existe en Firestore
     const existing = await getUserDocument(firebaseUser.uid);
 
     if (existing) {
@@ -155,8 +211,7 @@ export async function checkRedirectResult(): Promise<{
       return { user: existing, isNewUser: false, firebaseUser };
     }
 
-    // Usuario nuevo: crear documento AHORA con rol customer por defecto.
-    // Esto garantiza que el perfil siempre se guarda sin depender del modal.
+    // Usuario nuevo: crear documento
     const newUser: AppUser = {
       id: firebaseUser.uid,
       name: firebaseUser.displayName
@@ -170,27 +225,15 @@ export async function checkRedirectResult(): Promise<{
     };
 
     await createUserDocument(newUser);
-    console.log('[Auth] Nuevo usuario Google guardado en Firestore:', newUser.name);
-
-    // isNewUser:true para que la UI ofrezca opción de cambiar a vendedor
+    console.log('[Auth] Nuevo usuario Google guardado (redirect):', newUser.name);
     return { user: newUser, isNewUser: true, firebaseUser };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[Auth] Error en getRedirectResult:', msg);
 
-    if (msg.includes('unauthorized-domain')) {
-      throw new Error(
-        'Dominio no autorizado en Firebase. Agrega este dominio en Firebase Console -> Authentication -> Authorized domains.'
-      );
-    }
-    if (msg.includes('network-request-failed')) {
-      throw new Error('Sin conexion a internet. Verifica tu red.');
-    }
-    throw err;
+  } catch (err: unknown) {
+    throw translateAuthError(err);
   }
 }
 
-// ─── Completar registro Google ────────────────────────────────────────────────
+// ─── Completar registro Google (cambio de rol) ────────────────────────────────
 export async function completeGoogleRegistration(
   firebaseUser: FirebaseUser,
   role: UserRole
@@ -255,7 +298,7 @@ export async function loginWithEmail(
 export async function logoutUser(): Promise<void> {
   if (!isFirebaseConfigured()) return;
   await signOut(auth);
-  console.log('[Auth] Sesion cerrada');
+  console.log('[Auth] Sesión cerrada');
 }
 
 // ─── Password Reset ───────────────────────────────────────────────────────────
@@ -265,7 +308,29 @@ export async function resetPassword(email: string): Promise<void> {
     return;
   }
   await sendPasswordResetEmail(auth, email);
-  console.log('[Auth] Email de recuperacion enviado a:', email);
+  console.log('[Auth] Email de recuperación enviado a:', email);
+}
+
+// ─── Helpers internos ─────────────────────────────────────────────────────────
+function translateAuthError(err: unknown): Error {
+  const msg = err instanceof Error ? err.message : String(err);
+  const code = (err as { code?: string })?.code ?? '';
+
+  if (code.includes('unauthorized-domain') || msg.includes('unauthorized-domain')) {
+    return new Error(
+      'Dominio no autorizado en Firebase. Agrega este dominio en Firebase Console → Authentication → Authorized domains.'
+    );
+  }
+  if (code.includes('network-request-failed') || msg.includes('network-request-failed')) {
+    return new Error('Sin conexión a internet. Verifica tu red.');
+  }
+  if (code.includes('account-exists-with-different-credential')) {
+    return new Error('Ya existe una cuenta con este correo. Usa email y contraseña.');
+  }
+  if (code.includes('user-disabled')) {
+    return new Error('Esta cuenta ha sido deshabilitada.');
+  }
+  return err instanceof Error ? err : new Error(msg);
 }
 
 // ─── Mock helpers (modo demo sin Firebase) ────────────────────────────────────
@@ -289,4 +354,6 @@ async function mockLogin(email: string): Promise<AppUser> {
   };
 }
 
+// Mantener compatibilidad con imports existentes
+export { loginWithGooglePopupOrRedirect as startGoogleRedirect };
 export type { FirebaseUser };

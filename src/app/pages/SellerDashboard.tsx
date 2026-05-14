@@ -13,6 +13,7 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
+import { SafeImage } from '../components/SafeImage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog';
 import { useAuthStore } from '../store/useAuthStore';
@@ -418,9 +419,10 @@ function ProductsTab({
             <Card key={product.id} className="border-0 shadow-sm rounded-2xl">
               <CardContent className="p-4">
                 <div className="flex gap-3">
-                  <img
+                  <SafeImage
                     src={product.image}
                     alt={product.name}
+                    type="product"
                     className="w-16 h-16 rounded-xl object-cover shrink-0"
                   />
                   <div className="flex-1 min-w-0">

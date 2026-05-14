@@ -1,5 +1,6 @@
 import { Search, Clock, Star, Truck } from 'lucide-react';
 import { Input } from './ui/input';
+import { BANNER_IMAGES } from '../../assets/images';
 
 interface HeroSectionProps {
   onSearch: (query: string) => void;
@@ -13,8 +14,7 @@ export function HeroSection({ onSearch, searchQuery }: HeroSectionProps) {
       <div
         className="absolute inset-0 opacity-20"
         style={{
-          backgroundImage:
-            'url(https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1400&h=600&fit=crop)',
+          backgroundImage: `url(${BANNER_IMAGES.hero}),url(https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1400&h=600&fit=crop)`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}

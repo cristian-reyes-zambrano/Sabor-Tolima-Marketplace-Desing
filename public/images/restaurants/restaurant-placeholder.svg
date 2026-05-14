@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff3e0"/>
+      <stop offset="100%" stop-color="#ffe0b2"/>
+    </linearGradient>
+    <linearGradient id="plate" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f5f5f5"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#bg)"/>
+  <!-- subtle pattern -->
+  <circle cx="20" cy="20" r="40" fill="#e65100" opacity="0.05"/>
+  <circle cx="380" cy="280" r="60" fill="#c62828" opacity="0.05"/>
+  <circle cx="380" cy="20" r="30" fill="#e65100" opacity="0.04"/>
+  <!-- plate -->
+  <ellipse cx="200" cy="155" rx="80" ry="12" fill="#00000015"/>
+  <circle cx="200" cy="145" r="72" fill="url(#plate)" stroke="#e0e0e0" stroke-width="1.5"/>
+  <circle cx="200" cy="145" r="58" fill="none" stroke="#f0f0f0" stroke-width="1"/>
+  <!-- fork -->
+  <rect x="118" y="95" width="3" height="50" rx="1.5" fill="#bdbdbd"/>
+  <rect x="115" y="95" width="2" height="18" rx="1" fill="#bdbdbd"/>
+  <rect x="121" y="95" width="2" height="18" rx="1" fill="#bdbdbd"/>
+  <!-- knife -->
+  <rect x="279" y="95" width="3" height="50" rx="1.5" fill="#bdbdbd"/>
+  <path d="M279 95 Q285 105 282 113 L279 113 Z" fill="#bdbdbd"/>
+  <!-- food on plate -->
+  <ellipse cx="200" cy="140" rx="38" ry="28" fill="#ffcc80"/>
+  <ellipse cx="188" cy="135" rx="18" ry="14" fill="#ef6c00" opacity="0.7"/>
+  <ellipse cx="214" cy="148" rx="14" ry="10" fill="#c62828" opacity="0.6"/>
+  <circle cx="196" cy="128" r="6" fill="#4caf50" opacity="0.8"/>
+  <circle cx="210" cy="132" r="4" fill="#4caf50" opacity="0.7"/>
+  <!-- steam -->
+  <path d="M185 100 Q183 93 185 86 Q187 79 185 72" fill="none" stroke="#bdbdbd" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <path d="M200 98 Q198 91 200 84 Q202 77 200 70" fill="none" stroke="#bdbdbd" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <path d="M215 100 Q213 93 215 86 Q217 79 215 72" fill="none" stroke="#bdbdbd" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <!-- label -->
+  <rect x="120" y="218" width="160" height="28" rx="14" fill="#e65100" opacity="0.12"/>
+  <text x="200" y="237" font-family="system-ui,sans-serif" font-size="13" font-weight="600" text-anchor="middle" fill="#e65100">Sabor Tolima</text>
+</svg>

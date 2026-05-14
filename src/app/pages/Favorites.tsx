@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { restaurants } from '../data/restaurants';
 import { getMenuByRestaurant } from '../data/menu';
+import { SafeImage } from '../components/SafeImage';
 
 export default function Favorites() {
   const navigate = useNavigate();
@@ -134,9 +135,10 @@ export default function Favorites() {
                         className="bg-white rounded-2xl border border-border/60 shadow-sm overflow-hidden flex hover:shadow-md transition-shadow cursor-pointer"
                         onClick={() => navigate(`/restaurant/${item.restaurantId}`)}
                       >
-                        <img
+                        <SafeImage
                           src={item.image}
                           alt={item.name}
+                          type="product"
                           className="w-24 h-24 object-cover shrink-0"
                         />
                         <div className="flex-1 p-3 min-w-0">
