@@ -10,6 +10,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ReviewSection } from '../components/reviews/ReviewSection';
+import { RestaurantMiniMap } from '../components/RestaurantMiniMap';
 import { getRestaurantById } from '../data/restaurants';
 import { getMenuByRestaurant } from '../data/menu';
 import { useCartStore } from '../store/useCartStore';
@@ -378,6 +379,13 @@ export default function RestaurantProfile() {
                 </div>
               )}
             </div>
+
+            {/* Mini mapa de ubicación */}
+            <RestaurantMiniMap
+              restaurantId={restaurant.id}
+              restaurantName={restaurant.name}
+              address={restaurant.address}
+            />
           </CardContent>
         </Card>
 

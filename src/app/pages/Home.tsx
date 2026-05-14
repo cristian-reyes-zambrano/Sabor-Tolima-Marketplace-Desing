@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { TrendingUp, Heart, Flame, ChevronRight } from 'lucide-react';
+import { TrendingUp, Heart, Flame, ChevronRight, Map } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Navbar } from '../components/Navbar';
 import { RestaurantCard } from '../components/RestaurantCard';
@@ -75,6 +75,26 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
         {/* Hero */}
         <HeroSection onSearch={setSearchQuery} searchQuery={searchQuery} />
+
+        {/* Banner mapa de Ibagué */}
+        <button
+          onClick={() => navigate('/map')}
+          className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-[#1a0a00] to-[#3d1200] rounded-2xl text-left hover:opacity-95 transition-opacity group"
+        >
+          <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-white/20 transition-colors">
+            <Map className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white">Mapa de restaurantes en Ibagué</p>
+            <p className="text-xs text-white/60 mt-0.5">
+              22 restaurantes · 11 zonas · Rutas de entrega en tiempo real
+            </p>
+          </div>
+          <div className="flex items-center gap-1 text-white/70 shrink-0">
+            <span className="text-xs font-semibold hidden sm:block">Ver mapa</span>
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        </button>
 
         {/* Categories */}
         <CategoryFilter

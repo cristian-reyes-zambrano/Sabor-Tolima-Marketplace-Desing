@@ -23,30 +23,38 @@ interface MockOrder {
 
 const MOCK_ORDERS: MockOrder[] = [
   {
-    id: '#2024-001',
-    restaurantName: 'Lechona Tradicional Tolima',
-    items: ['Lechona Tolimense Completa', 'Avena Tolimense'],
+    id: '#IB-2024-001',
+    restaurantName: 'Lechonería La Tradición Ibagueña',
+    items: ['Lechona Tolimense Completa', 'Avena Tolimense Caliente'],
     total: 33000,
     status: 'delivered',
     date: 'Hoy, 12:30 PM',
   },
   {
-    id: '#2024-002',
-    restaurantName: 'Burgers & Wings',
-    items: ['Burger BBQ Doble', 'Wings Buffalo (10 und)', 'Limonada de Coco'],
-    total: 68000,
+    id: '#IB-2024-002',
+    restaurantName: 'Asados El Tolimense – La Pola',
+    items: ['Costillas BBQ Tolimenses', 'Chorizo Tolimense a la Parrilla', 'Limonada de Panela'],
+    total: 56000,
     status: 'preparing',
     date: 'Hoy, 1:15 PM',
     estimatedTime: '25-35 min',
   },
   {
-    id: '#2024-003',
-    restaurantName: 'Green Bowl Salads',
-    items: ['Buddha Bowl Proteico', 'Smoothie Verde Detox'],
+    id: '#IB-2024-003',
+    restaurantName: 'Ensaladas Frescas Ambalá',
+    items: ['Bowl Proteico Tolimense', 'Jugo Verde Detox Ambalá'],
     total: 42000,
     status: 'delivering',
     date: 'Ayer, 7:45 PM',
     estimatedTime: '10-15 min',
+  },
+  {
+    id: '#IB-2024-004',
+    restaurantName: 'Café Musical de Ibagué',
+    items: ['Café Tolimense Espresso', 'Almojábana con Queso', 'Torta de Novia Tolimense'],
+    total: 21000,
+    status: 'delivered',
+    date: 'Ayer, 9:00 AM',
   },
 ];
 
@@ -61,6 +69,7 @@ export default function Orders() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const [showAuth, setShowAuth] = useState(false);
+  const [dismissedReviews, setDismissedReviews] = useState<string[]>([]);
 
   if (!isAuthenticated) {
     return (
@@ -105,7 +114,7 @@ export default function Orders() {
           </Button>
           <div>
             <h1 className="text-xl font-bold text-foreground">Mis Pedidos</h1>
-            <p className="text-sm text-muted-foreground">{MOCK_ORDERS.length} pedidos</p>
+            <p className="text-sm text-muted-foreground">{MOCK_ORDERS.length} pedidos en Ibagué</p>
           </div>
         </div>
 
@@ -130,64 +139,78 @@ export default function Orders() {
             {MOCK_ORDERS.map((order) => {
               const config = STATUS_CONFIG[order.status];
               const StatusIcon = config.icon;
+              const showReviewPrompt =
+                order.status === 'delivered' &&
+                !dismissedReviews.includes(order.id);
+              // Mapear restaurantName a id para el WriteReviewPrompt
+              const restaurantIdMap: Record<string, string> = {
+                'Lechonería La Tradición Ibagueña': '1',
+                'Asados El Tolimense – La Pola': '5',
+                'Ensaladas Frescas Ambalá': '9',
+                'Café Musical de Ibagué': '13',
+              };
+              const restaurantId = restaurantIdMap[order.restaurantName] ?? '1';
 
               return (
-                <Card
-                  key={order.id}
-                  className="border-0 shadow-sm rounded-2xl hover:shadow-md transition-shadow cursor-pointer"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-xs font-bold text-muted-foreground">
-                            {order.id}
-                          </span>
-                          <span className="text-xs text-muted-foreground">·</span>
-                          <span className="text-xs text-muted-foreground">{order.date}</span>
+                <div key={order.id} className="space-y-2">
+                  <Card className="border-0 shadow-sm rounded-2xl hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-xs font-bold text-muted-foreground">{order.id}</span>
+                            <span className="text-xs text-muted-foreground">·</span>
+                            <span className="text-xs text-muted-foreground">{order.date}</span>
+                          </div>
+                          <h3 className="font-bold text-sm text-foreground truncate">{order.restaurantName}</h3>
                         </div>
-                        <h3 className="font-bold text-sm text-foreground truncate">
-                          {order.restaurantName}
-                        </h3>
+                        <Badge className={`${config.bg} ${config.color} border-0 text-xs gap-1 shrink-0`}>
+                          <StatusIcon className="w-3 h-3" />
+                          {config.label}
+                        </Badge>
                       </div>
-                      <Badge
-                        className={`${config.bg} ${config.color} border-0 text-xs gap-1 shrink-0`}
-                      >
-                        <StatusIcon className="w-3 h-3" />
-                        {config.label}
-                      </Badge>
-                    </div>
 
-                    <p className="text-xs text-muted-foreground mb-3 line-clamp-1">
-                      {order.items.join(' · ')}
-                    </p>
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-1">
+                        {order.items.join(' · ')}
+                      </p>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-bold text-foreground">
-                        ${order.total.toLocaleString()}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {order.estimatedTime && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {order.estimatedTime}
-                          </span>
-                        )}
-                        {order.status === 'delivered' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs rounded-xl h-7 px-3"
-                            onClick={() => navigate(`/restaurant/${order.id}`)}
-                          >
-                            Repetir
-                          </Button>
-                        )}
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      <div className="flex items-center justify-between">
+                        <span className="text-base font-bold text-foreground">
+                          ${order.total.toLocaleString()}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {order.estimatedTime && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {order.estimatedTime}
+                            </span>
+                          )}
+                          {order.status === 'delivered' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs rounded-xl h-7 px-3"
+                              onClick={() => navigate(`/restaurant/${restaurantId}`)}
+                            >
+                              Repetir
+                            </Button>
+                          )}
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+
+                  {/* Prompt de reseña para pedidos entregados */}
+                  {showReviewPrompt && (
+                    <WriteReviewPrompt
+                      restaurantId={restaurantId}
+                      restaurantName={order.restaurantName}
+                      orderId={order.id}
+                      onDismiss={() => setDismissedReviews(prev => [...prev, order.id])}
+                    />
+                  )}
+                </div>
               );
             })}
           </div>

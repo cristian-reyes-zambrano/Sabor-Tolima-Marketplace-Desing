@@ -105,11 +105,11 @@ export function Navbar() {
 
             {/* Actions — Desktop */}
             <div className="hidden md:flex items-center gap-1">
-              {/* Logistics Map */}
+              {/* Map */}
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleNavigate('/logistics')}
+                onClick={() => handleNavigate('/map')}
                 className="relative gap-1.5 rounded-xl text-muted-foreground hover:text-foreground"
               >
                 <Map className="w-4 h-4" />
@@ -304,10 +304,10 @@ export function Navbar() {
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-3 rounded-xl"
-                    onClick={() => handleNavigate('/logistics')}
+                    onClick={() => handleNavigate('/map')}
                   >
                     <Map className="w-4 h-4" />
-                    Mapa Logístico
+                    Mapa de Ibagué
                   </Button>
                   <Button
                     variant="ghost"

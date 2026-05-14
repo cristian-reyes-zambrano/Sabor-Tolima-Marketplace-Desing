@@ -321,26 +321,25 @@ export default function SellerDashboard() {
 }
 
 // ─── Tab: Overview ───────────────────────────────────────────────────────────
-function OverviewTab({ products }: { products: SellerProduct[] }) {
+function OverviewTab({ products, orders }: { products: SellerProduct[]; orders: AppOrder[] }) {
   const activeProducts = products.filter((p) => p.available).length;
+  const todayOrders = orders.filter(o => {
+    const d = new Date(o.createdAt);
+    const now = new Date();
+    return d.toDateString() === now.toDateString();
+  });
+  const todayRevenue = todayOrders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total, 0);
+  const activeOrdersCount = orders.filter(o => ['pending','confirmed','preparing','ready'].includes(o.status)).length;
 
   const stats = [
-    { label: 'Ventas hoy', value: '$450.000', sub: '+12% vs ayer', icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Pedidos activos', value: '12', sub: '4 en preparación', icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Productos activos', value: String(activeProducts || 24), sub: 'En el menú', icon: Package, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Calificación', value: '4.8', sub: '250+ reseñas', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
-  ];
-
-  // Demo review analytics
-  const reviewAnalytics = [
-    { label: 'Satisfacción', value: '96%', icon: '😊', color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Reseñas este mes', value: '18', icon: '⭐', color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Plato más popular', value: 'Lechona', icon: '🏆', color: 'text-primary', bg: 'bg-primary/10' },
+    { label: 'Ventas hoy', value: todayRevenue > 0 ? `$${todayRevenue.toLocaleString()}` : '$195.750', sub: `${todayOrders.length} pedidos`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Pedidos activos', value: String(activeOrdersCount || 4), sub: 'En proceso ahora', icon: ShoppingBag, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Productos activos', value: String(activeProducts || 7), sub: 'En el menú', icon: Package, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Calificación', value: '4.8', sub: '18 reseñas este mes', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(({ label, value, sub, icon: Icon, color, bg }) => (
           <Card key={label} className="border-0 shadow-sm rounded-2xl">
@@ -356,35 +355,64 @@ function OverviewTab({ products }: { products: SellerProduct[] }) {
         ))}
       </div>
 
-      {/* Review analytics */}
+      {/* Pedidos recientes */}
+      <Card className="border-0 shadow-sm rounded-2xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-bold">Pedidos recientes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {orders.slice(0, 4).map((order) => {
+            const cfg = ORDER_STATUS[order.status] ?? ORDER_STATUS.pending;
+            const itemNames = order.items.map(i => `${i.name} x${i.quantity}`).join(', ');
+            const timeStr = new Date(order.createdAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+            return (
+              <div key={order.id} className="flex items-center justify-between gap-3 p-3 bg-muted/30 rounded-xl">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-muted-foreground">{order.id}</span>
+                    <span className="text-xs text-muted-foreground">· {timeStr}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{itemNames}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-foreground">${order.total.toLocaleString()}</p>
+                  <Badge className={`${cfg.bg} ${cfg.color} border-0 text-[10px] mt-1`}>{cfg.label}</Badge>
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Satisfacción */}
       <Card className="border-0 shadow-sm rounded-2xl">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold flex items-center gap-2">
             <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-            Analytics de reseñas
+            Satisfacción del cliente
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-3 mb-4">
-            {reviewAnalytics.map(({ label, value, icon, color, bg }) => (
+            {[
+              { label: 'Satisfacción', value: '96%', icon: '😊', color: 'text-green-600', bg: 'bg-green-50' },
+              { label: 'Reseñas mes', value: '18', icon: '⭐', color: 'text-amber-600', bg: 'bg-amber-50' },
+              { label: 'Más popular', value: 'Lechona', icon: '🏆', color: 'text-primary', bg: 'bg-primary/10' },
+            ].map(({ label, value, icon, color, bg }) => (
               <div key={label} className={`${bg} rounded-xl p-3 text-center`}>
                 <p className="text-2xl mb-1">{icon}</p>
-                <p className={`text-lg font-bold ${color}`}>{value}</p>
+                <p className={`text-sm font-bold ${color}`}>{value}</p>
                 <p className="text-[10px] text-muted-foreground">{label}</p>
               </div>
             ))}
           </div>
-          {/* Mini star distribution */}
           <div className="space-y-1.5">
             {([5, 4, 3] as const).map((star) => {
               const pcts: Record<number, number> = { 5: 72, 4: 20, 3: 8 };
               return (
                 <div key={star} className="flex items-center gap-2">
-                  <div className="flex items-center gap-0.5 w-16 shrink-0">
-                    {Array.from({ length: star }).map((_, i) => (
-                      <Star key={i} className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
+                  <span className="text-xs text-muted-foreground w-3">{star}</span>
+                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 shrink-0" />
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pcts[star]}%` }} />
                   </div>
@@ -393,37 +421,6 @@ function OverviewTab({ products }: { products: SellerProduct[] }) {
               );
             })}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Recent orders */}
-      <Card className="border-0 shadow-sm rounded-2xl">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold">Pedidos recientes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {MOCK_ORDERS.slice(0, 4).map((order) => {
-            const cfg = ORDER_STATUS[order.status];
-            return (
-              <div key={order.id} className="flex items-center justify-between gap-3 p-3 bg-muted/30 rounded-xl">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-muted-foreground">{order.id}</span>
-                    <span className="text-xs text-muted-foreground">·</span>
-                    <span className="text-xs text-muted-foreground">{order.time}</span>
-                  </div>
-                  <p className="text-sm font-semibold text-foreground truncate">{order.customer}</p>
-                  <p className="text-xs text-muted-foreground truncate">{order.items}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-foreground">${order.total.toLocaleString()}</p>
-                  <Badge className={`${cfg.bg} ${cfg.color} border-0 text-[10px] mt-1`}>
-                    {cfg.label}
-                  </Badge>
-                </div>
-              </div>
-            );
-          })}
         </CardContent>
       </Card>
     </div>
@@ -455,11 +452,10 @@ function ProductsTab({
     toast.success('Disponibilidad actualizada');
   };
 
-  // Demo products if none loaded
   const displayProducts: SellerProduct[] = products.length > 0 ? products : [
-    { id: 'd1', restaurantId: 'demo', name: 'Bandeja Paisa', description: 'Tradicional bandeja completa', price: 25000, image: 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=200&h=150&fit=crop', category: 'principales', available: true, isPopular: true },
-    { id: 'd2', restaurantId: 'demo', name: 'Lechona Tolimense', description: 'Auténtica lechona del Tolima', price: 28000, image: 'https://images.unsplash.com/photo-1628840042765-356cda07f4ee?w=200&h=150&fit=crop', category: 'principales', available: true },
-    { id: 'd3', restaurantId: 'demo', name: 'Tamal Tolimense', description: 'Tamal tradicional en hoja de plátano', price: 12000, image: 'https://images.unsplash.com/photo-1585238341710-4913098dbc83?w=200&h=150&fit=crop', category: 'entradas', available: false },
+    { id: 'd1', restaurantId: 'demo', name: 'Lechona Tolimense Completa', description: 'Lechona entera horneada 12 horas con receta familiar', price: 28000, image: '/images/products/product-placeholder.svg', category: 'principales', available: true, isPopular: true },
+    { id: 'd2', restaurantId: 'demo', name: 'Tamal Tolimense Clásico',    description: 'Tamal con pollo, cerdo y arroz en hoja de plátano',   price: 12000, image: '/images/products/product-placeholder.svg', category: 'entradas',   available: true,  isPopular: true },
+    { id: 'd3', restaurantId: 'demo', name: 'Avena Tolimense Caliente',   description: 'Avena al fuego de leña con canela y panela',           price: 5000,  image: '/images/products/product-placeholder.svg', category: 'bebidas',    available: false, isPopular: false },
   ];
 
   return (
@@ -532,131 +528,621 @@ function ProductsTab({
 }
 
 // ─── Tab: Orders ──────────────────────────────────────────────────────────────
-function OrdersTab() {
+function OrdersTab({
+  orders,
+  isLoading,
+  onRefresh,
+  onStatusChange,
+}: {
+  orders: AppOrder[];
+  isLoading: boolean;
+  onRefresh: () => void;
+  onStatusChange: (id: string, status: AppOrder['status']) => Promise<void>;
+}) {
   const [filter, setFilter] = useState<string>('all');
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const filtered = filter === 'all'
-    ? MOCK_ORDERS
-    : MOCK_ORDERS.filter((o) => o.status === filter);
+    ? orders
+    : orders.filter((o) => o.status === filter);
+
+  const handleStatus = async (orderId: string, status: AppOrder['status']) => {
+    setUpdatingId(orderId);
+    try { await onStatusChange(orderId, status); }
+    finally { setUpdatingId(null); }
+  };
+
+  const NEXT_STATUS: Partial<Record<AppOrder['status'], { status: AppOrder['status']; label: string; color: string }>> = {
+    pending:   { status: 'preparing', label: 'Aceptar pedido',  color: 'bg-primary hover:bg-primary/90 text-white' },
+    preparing: { status: 'ready',     label: 'Marcar listo',    color: 'bg-green-600 hover:bg-green-700 text-white' },
+    ready:     { status: 'delivered', label: 'Marcar entregado', color: 'bg-blue-600 hover:bg-blue-700 text-white' },
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {['all', 'pending', 'preparing', 'ready', 'delivered'].map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-              filter === s
-                ? 'bg-primary text-white'
-                : 'bg-white border border-border text-muted-foreground hover:border-primary/30'
-            }`}
-          >
-            {s === 'all' ? 'Todos' : ORDER_STATUS[s]?.label ?? s}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {['all', 'pending', 'preparing', 'ready', 'delivered', 'cancelled'].map((s) => {
+            const count = s === 'all' ? orders.length : orders.filter(o => o.status === s).length;
+            return (
+              <button
+                key={s}
+                onClick={() => setFilter(s)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  filter === s
+                    ? 'bg-primary text-white'
+                    : 'bg-white border border-border text-muted-foreground hover:border-primary/30'
+                }`}
+              >
+                {s === 'all' ? 'Todos' : ORDER_STATUS[s]?.label ?? s}
+                {count > 0 && (
+                  <span className={`text-[10px] rounded-full px-1.5 py-0 ${filter === s ? 'bg-white/20' : 'bg-muted'}`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          Actualizar
+        </button>
       </div>
 
-      <div className="space-y-3">
-        {filtered.map((order) => {
-          const cfg = ORDER_STATUS[order.status];
-          // Demo special instructions
-          const demoInstructions = order.id === '#001' ? 'Sin cebolla, poco picante' : order.id === '#002' ? 'Alérgico al maní - IMPORTANTE' : '';
-          return (
-            <Card key={order.id} className="border-0 shadow-sm rounded-2xl">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-foreground">{order.id}</span>
-                      <Badge className={`${cfg.bg} ${cfg.color} border-0 text-[10px]`}>{cfg.label}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{order.customer} · {order.time}</p>
-                  </div>
-                  <p className="text-base font-bold text-foreground">${order.total.toLocaleString()}</p>
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">{order.items}</p>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-4xl mb-3">📦</p>
+          <p className="text-sm font-semibold text-foreground">Sin pedidos</p>
+          <p className="text-xs text-muted-foreground mt-1">No hay pedidos en esta categoría</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((order) => {
+            const cfg = ORDER_STATUS[order.status] ?? ORDER_STATUS.pending;
+            const next = NEXT_STATUS[order.status];
+            const itemNames = order.items.map(i => `${i.name} ×${i.quantity}`).join(' · ');
+            const timeStr = new Date(order.createdAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+            const isUpdating = updatingId === order.id;
 
-                {/* Special instructions highlight */}
-                {demoInstructions && (
-                  <div className={`flex items-start gap-2 p-2.5 rounded-xl mb-3 text-xs ${
-                    demoInstructions.toLowerCase().includes('alérg')
-                      ? 'bg-red-50 border border-red-200 text-red-800'
-                      : 'bg-amber-50 border border-amber-200 text-amber-800'
-                  }`}>
-                    <span className="text-base shrink-0">
-                      {demoInstructions.toLowerCase().includes('alérg') ? '⚠️' : '📝'}
-                    </span>
+            return (
+              <Card key={order.id} className="border-0 shadow-sm rounded-2xl">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
-                      <p className="font-bold mb-0.5">
-                        {demoInstructions.toLowerCase().includes('alérg') ? 'ALERGIA — Leer con atención' : 'Instrucciones del cliente'}
-                      </p>
-                      <p>{demoInstructions}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-foreground">{order.id}</span>
+                        <Badge className={`${cfg.bg} ${cfg.color} border-0 text-[10px]`}>{cfg.label}</Badge>
+                        <span className="text-xs text-muted-foreground">{timeStr}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">{order.address}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-base font-bold text-foreground">${order.total.toLocaleString()}</p>
+                      <p className="text-[11px] text-muted-foreground">{order.paymentMethod === 'cash' ? 'Efectivo' : order.paymentMethod === 'card' ? 'Tarjeta' : 'PSE/Nequi'}</p>
                     </div>
                   </div>
-                )}
 
-                {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                  <div className="flex gap-2">
-                    {order.status === 'pending' && (
-                      <Button size="sm" className="rounded-xl text-xs h-7 bg-primary hover:bg-primary/90 text-white">
-                        Aceptar pedido
+                  {/* Items */}
+                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{itemNames}</p>
+
+                  {/* Instrucciones especiales */}
+                  {order.specialInstructions && (
+                    <div className={`flex items-start gap-2 p-2.5 rounded-xl mb-3 text-xs ${
+                      order.specialInstructions.toLowerCase().includes('alérg')
+                        ? 'bg-red-50 border border-red-200 text-red-800'
+                        : 'bg-amber-50 border border-amber-200 text-amber-800'
+                    }`}>
+                      <span className="text-base shrink-0">
+                        {order.specialInstructions.toLowerCase().includes('alérg') ? '⚠️' : '📝'}
+                      </span>
+                      <div>
+                        <p className="font-bold mb-0.5">
+                          {order.specialInstructions.toLowerCase().includes('alérg')
+                            ? 'ALERGIA — Leer con atención'
+                            : 'Instrucciones del cliente'}
+                        </p>
+                        <p>{order.specialInstructions}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Acciones */}
+                  {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                    <div className="flex gap-2 flex-wrap">
+                      {next && (
+                        <Button
+                          size="sm"
+                          disabled={isUpdating}
+                          onClick={() => handleStatus(order.id, next.status)}
+                          className={`rounded-xl text-xs h-7 ${next.color}`}
+                        >
+                          {isUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : next.label}
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isUpdating}
+                        onClick={() => handleStatus(order.id, 'cancelled')}
+                        className="rounded-xl text-xs h-7 text-destructive border-destructive/30 hover:bg-destructive/5"
+                      >
+                        Cancelar
                       </Button>
-                    )}
-                    {order.status === 'preparing' && (
-                      <Button size="sm" className="rounded-xl text-xs h-7 bg-green-600 hover:bg-green-700 text-white">
-                        Marcar listo
-                      </Button>
-                    )}
-                    {order.status === 'ready' && (
-                      <Button size="sm" className="rounded-xl text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white">
-                        Entregado
-                      </Button>
-                    )}
-                    <Button variant="outline" size="sm" className="rounded-xl text-xs h-7 text-destructive border-destructive/30">
-                      Cancelar
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Tab: Settings ────────────────────────────────────────────────────────────
-function SettingsTab({ profile }: { profile: ReturnType<typeof useSellerStore.getState>['profile'] }) {
+function SettingsTab({
+  profile,
+  onSave,
+}: {
+  profile: ReturnType<typeof useSellerStore.getState>['profile'];
+  onSave: (data: Partial<import('../types').SellerProfile>) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    restaurantName: profile?.restaurantName ?? '',
+    description:    profile?.description    ?? '',
+    phone:          profile?.phone          ?? '',
+    schedule:       profile?.schedule       ?? '',
+    address:        profile?.address        ?? '',
+    estimatedTime:  profile?.estimatedTime  ?? '',
+    deliveryFee:    profile?.deliveryFee    ?? 4000,
+    minOrder:       profile?.minOrder       ?? 15000,
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!form.restaurantName.trim()) { toast.error('El nombre es requerido'); return; }
+    setIsSaving(true);
+    try {
+      await onSave(form);
+      toast.success('Cambios guardados correctamente');
+    } catch {
+      toast.error('Error al guardar. Intenta de nuevo.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const F = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-semibold text-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+
   return (
     <div className="space-y-4 max-w-lg">
       <Card className="border-0 shadow-sm rounded-2xl">
         <CardContent className="p-5 space-y-4">
           <h3 className="font-bold text-sm text-foreground">Información del restaurante</h3>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Nombre</Label>
-              <Input defaultValue={profile?.restaurantName ?? ''} className="rounded-xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Descripción</Label>
-              <Textarea defaultValue={profile?.description ?? ''} className="rounded-xl resize-none" rows={3} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Teléfono</Label>
-              <Input defaultValue={profile?.phone ?? ''} className="rounded-xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Horario</Label>
-              <Input defaultValue={profile?.schedule ?? ''} className="rounded-xl" />
-            </div>
+          <F label="Nombre del restaurante *">
+            <Input value={form.restaurantName}
+              onChange={e => setForm(f => ({ ...f, restaurantName: e.target.value }))}
+              className="rounded-xl" />
+          </F>
+          <F label="Descripción">
+            <Textarea value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              className="rounded-xl resize-none" rows={3} />
+          </F>
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Teléfono">
+              <Input value={form.phone}
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                className="rounded-xl" placeholder="300 123 4567" />
+            </F>
+            <F label="Horario">
+              <Input value={form.schedule}
+                onChange={e => setForm(f => ({ ...f, schedule: e.target.value }))}
+                className="rounded-xl" placeholder="Lun-Dom 8am-8pm" />
+            </F>
+            <F label="Dirección">
+              <Input value={form.address}
+                onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                className="rounded-xl" placeholder="Calle 10 # 5-23, Ibagué" />
+            </F>
+            <F label="Tiempo estimado">
+              <Input value={form.estimatedTime}
+                onChange={e => setForm(f => ({ ...f, estimatedTime: e.target.value }))}
+                className="rounded-xl" placeholder="25-35 min" />
+            </F>
+            <F label="Costo de envío ($)">
+              <Input type="number" value={form.deliveryFee}
+                onChange={e => setForm(f => ({ ...f, deliveryFee: Number(e.target.value) }))}
+                className="rounded-xl" />
+            </F>
+            <F label="Pedido mínimo ($)">
+              <Input type="number" value={form.minOrder}
+                onChange={e => setForm(f => ({ ...f, minOrder: Number(e.target.value) }))}
+                className="rounded-xl" />
+            </F>
           </div>
-          <Button className="w-full rounded-xl bg-primary hover:bg-primary/90 text-white">
-            Guardar cambios
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-full rounded-xl bg-primary hover:bg-primary/90 text-white"
+          >
+            {isSaving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Guardando...</> : 'Guardar cambios'}
           </Button>
         </CardContent>
       </Card>
+
+      {/* Info de ciudad */}
+      <Card className="border-0 shadow-sm rounded-2xl">
+        <CardContent className="p-4 flex items-start gap-3">
+          <span className="text-2xl">📍</span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Ciudad de operación</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Ibagué, Tolima — Colombia<br />
+              Sabor Tolima opera exclusivamente dentro de Ibagué como ciudad piloto.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Tab: Stats ───────────────────────────────────────────────────────────────
+function StatsTab({ products, orders }: { products: SellerProduct[]; orders: AppOrder[] }) {
+  const delivered = orders.filter(o => o.status === 'delivered');
+  const totalRevenue = delivered.reduce((s, o) => s + o.total, 0);
+  const avgTicket = delivered.length > 0 ? Math.round(totalRevenue / delivered.length) : 0;
+
+  // Productos más vendidos (conteo por nombre en items de pedidos entregados)
+  const productCount: Record<string, { name: string; count: number; revenue: number }> = {};
+  delivered.forEach(order => {
+    order.items.forEach(item => {
+      if (!productCount[item.name]) productCount[item.name] = { name: item.name, count: 0, revenue: 0 };
+      productCount[item.name].count += item.quantity;
+      productCount[item.name].revenue += item.price * item.quantity;
+    });
+  });
+  const topProducts = Object.values(productCount).sort((a, b) => b.count - a.count).slice(0, 5);
+
+  // Pedidos por estado
+  const byStatus = Object.entries(ORDER_STATUS).map(([key, cfg]) => ({
+    key, label: cfg.label, count: orders.filter(o => o.status === key).length,
+    color: cfg.color, bg: cfg.bg,
+  })).filter(s => s.count > 0);
+
+  // Ventas por día (últimos 7 días demo)
+  const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const demoSales = [45000, 78000, 62000, 95000, 110000, 145000, 88000];
+  const maxSale = Math.max(...demoSales);
+
+  return (
+    <div className="space-y-5">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Ingresos totales', value: `$${totalRevenue > 0 ? totalRevenue.toLocaleString() : '623.000'}`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Pedidos entregados', value: String(delivered.length || 12), icon: CheckCircle2, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Ticket promedio', value: `$${avgTicket > 0 ? avgTicket.toLocaleString() : '51.900'}`, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Productos en menú', value: String(products.length || 7), icon: Package, color: 'text-amber-600', bg: 'bg-amber-50' },
+        ].map(({ label, value, icon: Icon, color, bg }) => (
+          <Card key={label} className="border-0 shadow-sm rounded-2xl">
+            <CardContent className="p-4">
+              <div className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center mb-2`}>
+                <Icon className={`w-4 h-4 ${color}`} />
+              </div>
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="text-xl font-bold text-foreground mt-0.5">{value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Ventas últimos 7 días */}
+      <Card className="border-0 shadow-sm rounded-2xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-primary" />
+            Ventas últimos 7 días (Ibagué)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-2 h-32">
+            {demoSales.map((val, i) => {
+              const h = Math.round((val / maxSale) * 100);
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-[9px] text-muted-foreground">${(val/1000).toFixed(0)}k</span>
+                  <div className="w-full rounded-t-lg bg-primary/20 relative overflow-hidden" style={{ height: `${h}%` }}>
+                    <div className="absolute bottom-0 left-0 right-0 bg-primary rounded-t-lg transition-all" style={{ height: '100%' }} />
+                  </div>
+                  <span className="text-[9px] text-muted-foreground">{DAYS[i]}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Productos más vendidos */}
+      <Card className="border-0 shadow-sm rounded-2xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold flex items-center gap-2">
+            <Flame className="w-4 h-4 text-primary" />
+            Productos más vendidos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(topProducts.length > 0 ? topProducts : [
+            { name: 'Lechona Tolimense Completa', count: 34, revenue: 952000 },
+            { name: 'Combo Lechona Familiar',     count: 18, revenue: 1350000 },
+            { name: 'Tamal Tolimense',            count: 27, revenue: 324000 },
+            { name: 'Sancocho de Gallina Criolla',count: 15, revenue: 330000 },
+            { name: 'Avena Tolimense Caliente',   count: 42, revenue: 210000 },
+          ]).map((p, i) => {
+            const maxCount = topProducts.length > 0 ? topProducts[0].count : 42;
+            const pct = Math.round((p.count / maxCount) * 100);
+            return (
+              <div key={p.name} className="flex items-center gap-3 mb-3 last:mb-0">
+                <span className="text-xs font-bold text-muted-foreground w-4 shrink-0">#{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-foreground truncate">{p.name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0 ml-2">{p.count} uds</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-green-600 shrink-0 w-20 text-right">
+                  ${p.revenue.toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Pedidos por estado */}
+      <Card className="border-0 shadow-sm rounded-2xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold">Distribución de pedidos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {(byStatus.length > 0 ? byStatus : [
+              { key: 'delivered', label: 'Entregados', count: 12, color: 'text-gray-600', bg: 'bg-gray-50' },
+              { key: 'preparing', label: 'Preparando', count: 2,  color: 'text-blue-700', bg: 'bg-blue-50' },
+              { key: 'pending',   label: 'Pendientes', count: 1,  color: 'text-amber-700', bg: 'bg-amber-50' },
+            ]).map(s => (
+              <div key={s.key} className={`${s.bg} rounded-xl p-3 text-center`}>
+                <p className={`text-2xl font-bold ${s.color}`}>{s.count}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Tab: Promos ──────────────────────────────────────────────────────────────
+function PromosTab({ products }: { products: SellerProduct[] }) {
+  const { editProduct } = useSellerStore();
+  const [showForm, setShowForm] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [discountPct, setDiscountPct] = useState(10);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const displayProducts: SellerProduct[] = products.length > 0 ? products : [
+    { id: 'd1', restaurantId: 'demo', name: 'Lechona Tolimense Completa', description: '', price: 28000, image: '', category: 'principales', available: true, isPopular: true, discount: 15 },
+    { id: 'd2', restaurantId: 'demo', name: 'Combo Lechona Familiar',     description: '', price: 75000, image: '', category: 'combos',     available: true, isPopular: true, discount: undefined },
+    { id: 'd3', restaurantId: 'demo', name: 'Tamal Tolimense',            description: '', price: 12000, image: '', category: 'entradas',   available: true, isPopular: false, discount: 20 },
+    { id: 'd4', restaurantId: 'demo', name: 'Sancocho de Gallina Criolla',description: '', price: 22000, image: '', category: 'principales', available: true, isPopular: false, discount: undefined },
+  ];
+
+  const withDiscount = displayProducts.filter(p => p.discount && p.discount > 0);
+  const withoutDiscount = displayProducts.filter(p => !p.discount || p.discount === 0);
+
+  const handleApply = async () => {
+    if (!selectedProductId) { toast.error('Selecciona un producto'); return; }
+    if (discountPct < 1 || discountPct > 80) { toast.error('El descuento debe estar entre 1% y 80%'); return; }
+    setIsSaving(true);
+    try {
+      await editProduct(selectedProductId, { discount: discountPct });
+      toast.success(`Descuento del ${discountPct}% aplicado`);
+      setShowForm(false);
+      setSelectedProductId('');
+      setDiscountPct(10);
+    } catch {
+      toast.error('Error al aplicar el descuento');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    try {
+      await editProduct(id, { discount: undefined });
+      toast.success('Descuento eliminado');
+    } catch {
+      toast.error('Error al eliminar el descuento');
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-bold text-foreground">Promociones activas</h2>
+          <p className="text-xs text-muted-foreground">{withDiscount.length} productos con descuento</p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => setShowForm(p => !p)}
+          className="rounded-xl gap-1.5 bg-primary hover:bg-primary/90 text-white"
+        >
+          <Tag className="w-4 h-4" />
+          {showForm ? 'Cancelar' : 'Nueva promo'}
+        </Button>
+      </div>
+
+      {/* Formulario nueva promo */}
+      {showForm && (
+        <Card className="border-0 shadow-sm rounded-2xl border-l-4 border-l-primary">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-bold text-foreground">Aplicar descuento</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Producto</Label>
+              <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Selecciona un producto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {withoutDiscount.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} — ${p.price.toLocaleString()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Descuento (%)</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  value={discountPct}
+                  onChange={e => setDiscountPct(Number(e.target.value))}
+                  min={1} max={80}
+                  className="rounded-xl w-24"
+                />
+                <div className="flex gap-2">
+                  {[10, 15, 20, 25, 30].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setDiscountPct(n)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                        discountPct === n
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-white border-border text-muted-foreground hover:border-primary/30'
+                      }`}
+                    >
+                      {n}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {selectedProductId && (
+              <div className="p-3 bg-muted/50 rounded-xl text-xs text-muted-foreground">
+                {(() => {
+                  const p = displayProducts.find(x => x.id === selectedProductId);
+                  if (!p) return null;
+                  const discounted = Math.round(p.price * (1 - discountPct / 100));
+                  return (
+                    <span>
+                      Precio original: <strong>${p.price.toLocaleString()}</strong>
+                      {' → '}
+                      Precio con descuento: <strong className="text-primary">${discounted.toLocaleString()}</strong>
+                    </span>
+                  );
+                })()}
+              </div>
+            )}
+            <Button
+              onClick={handleApply}
+              disabled={isSaving || !selectedProductId}
+              className="w-full rounded-xl bg-primary hover:bg-primary/90 text-white"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Tag className="w-4 h-4 mr-2" />}
+              Aplicar descuento
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Productos con descuento */}
+      {withDiscount.length > 0 ? (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Con descuento activo</p>
+          {withDiscount.map(p => {
+            const discounted = Math.round(p.price * (1 - (p.discount ?? 0) / 100));
+            return (
+              <Card key={p.id} className="border-0 shadow-sm rounded-2xl">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <SafeImage src={p.image} alt={p.name} type="product"
+                    className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground truncate">{p.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs line-through text-muted-foreground">${p.price.toLocaleString()}</span>
+                      <span className="text-xs font-bold text-primary">${discounted.toLocaleString()}</span>
+                      <Badge className="bg-primary/10 text-primary border-0 text-[10px] px-1.5">
+                        -{p.discount}%
+                      </Badge>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemove(p.id)}
+                    className="h-7 px-2 rounded-lg text-xs text-destructive hover:text-destructive shrink-0"
+                  >
+                    <X className="w-3 h-3 mr-1" /> Quitar
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-10">
+          <p className="text-3xl mb-3">🏷️</p>
+          <p className="text-sm font-semibold text-foreground">Sin promociones activas</p>
+          <p className="text-xs text-muted-foreground mt-1">Crea tu primera promoción para atraer más clientes</p>
+        </div>
+      )}
+
+      {/* Productos sin descuento */}
+      {withoutDiscount.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sin descuento</p>
+          {withoutDiscount.map(p => (
+            <div key={p.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-border/60">
+              <SafeImage src={p.image} alt={p.name} type="product"
+                className="w-10 h-10 rounded-lg object-cover shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate">{p.name}</p>
+                <p className="text-xs text-muted-foreground">${p.price.toLocaleString()}</p>
+              </div>
+              <button
+                onClick={() => { setSelectedProductId(p.id); setShowForm(true); }}
+                className="text-xs text-primary hover:text-primary/80 font-semibold shrink-0"
+              >
+                + Promo
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -734,7 +1220,7 @@ function ProductModal({
         description: form.description,
         price: Number(form.price),
         category: form.category,
-        image: imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop',
+        image: imageUrl || '/images/products/product-placeholder.svg',
         available: form.available,
         ingredients: form.ingredients ? form.ingredients.split(',').map((s) => s.trim()) : [],
         discount: Number(form.discount) || undefined,

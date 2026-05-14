@@ -11,6 +11,7 @@ import Orders from './pages/Orders';
 import SellerOnboarding from './pages/SellerOnboarding';
 import SellerDashboard from './pages/SellerDashboard';
 import LogisticsMap from './pages/LogisticsMap';
+import MapPage from './pages/MapPage';
 
 export const router = createBrowserRouter([
   // ── Public routes ──────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
   { path: '/role-selection', Component: RoleSelection },
   { path: '/restaurant/:id', Component: RestaurantProfile },
   { path: '/logistics', Component: LogisticsMap },
+  { path: '/map', Component: MapPage },
 
   // ── Customer routes (require auth) ─────────────────────────────────────────
   { path: '/cart', Component: Cart },

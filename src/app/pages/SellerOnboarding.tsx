@@ -568,11 +568,16 @@ function StepDocuments({
   onDocSelect: (field: 'identityDoc' | 'foodHandlerDoc' | 'rutDoc' | 'sanitaryDoc', file: File) => void;
   uploadProgress: Record<string, number>;
 }) {
-  const docs = [
-    { field: 'identityDoc' as const, label: 'Documento de identidad *', required: true, icon: '🪪' },
-    { field: 'foodHandlerDoc' as const, label: 'Certificado manipulación de alimentos *', required: true, icon: '🍽️' },
-    { field: 'rutDoc' as const, label: 'RUT o documento comercial', required: false, icon: '📄' },
-    { field: 'sanitaryDoc' as const, label: 'Permiso sanitario', required: false, icon: '🏥' },
+  const docs: {
+    field: 'identityDoc' | 'foodHandlerDoc' | 'rutDoc' | 'sanitaryDoc';
+    label: string;
+    required: boolean;
+    icon: string;
+  }[] = [
+    { field: 'identityDoc',    label: 'Documento de identidad *',                required: true,  icon: '🪪' },
+    { field: 'foodHandlerDoc', label: 'Certificado manipulación de alimentos *', required: true,  icon: '🍽️' },
+    { field: 'rutDoc',         label: 'RUT o documento comercial',               required: false, icon: '📄' },
+    { field: 'sanitaryDoc',    label: 'Permiso sanitario',                       required: false, icon: '🏥' },
   ];
 
   return (
@@ -592,63 +597,83 @@ function StepDocuments({
       </div>
 
       <div className="space-y-3">
-        {docs.map(({ field, label, required, icon }) => {
-          const file = data[field] as File | null;
-          const progress = uploadProgress[field.replace('Doc', '')];
-          const inputRef = useRef<HTMLInputElement>(null);
-
-          return (
-            <Card key={field} className="border-0 shadow-sm rounded-2xl">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center text-lg shrink-0">
-                      {icon}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{label}</p>
-                      {file ? (
-                        <p className="text-xs text-green-600 flex items-center gap-1 mt-0.5">
-                          <CheckCircle2 className="w-3 h-3" />
-                          {file.name.length > 25 ? file.name.slice(0, 25) + '...' : file.name}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          PDF, JPG o PNG · Máx 10MB
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    variant={file ? 'outline' : 'default'}
-                    size="sm"
-                    className="rounded-xl shrink-0"
-                    onClick={() => inputRef.current?.click()}
-                  >
-                    {file ? <><X className="w-3 h-3 mr-1" /> Cambiar</> : <><Upload className="w-3 h-3 mr-1" /> Subir</>}
-                  </Button>
-                  <input
-                    ref={inputRef}
-                    type="file"
-                    accept=".pdf,image/*"
-                    className="hidden"
-                    onChange={(e) => e.target.files?.[0] && onDocSelect(field, e.target.files[0])}
-                  />
-                </div>
-                {progress !== undefined && progress < 100 && (
-                  <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+        {docs.map(({ field, label, icon }) => (
+          <DocRow
+            key={field}
+            field={field}
+            label={label}
+            icon={icon}
+            file={data[field] as File | null}
+            progress={uploadProgress[field.replace('Doc', '')]}
+            onSelect={(f) => onDocSelect(field, f)}
+          />
+        ))}
       </div>
     </div>
+  );
+}
+
+// Sub-componente para cada fila de documento — tiene su propio useRef (correcto)
+function DocRow({
+  field, label, icon, file, progress, onSelect,
+}: {
+  field: string;
+  label: string;
+  icon: string;
+  file: File | null;
+  progress?: number;
+  onSelect: (f: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <Card className="border-0 shadow-sm rounded-2xl">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center text-lg shrink-0">
+              {icon}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">{label}</p>
+              {file ? (
+                <p className="text-xs text-green-600 flex items-center gap-1 mt-0.5">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {file.name.length > 25 ? file.name.slice(0, 25) + '...' : file.name}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-0.5">PDF, JPG o PNG · Máx 10MB</p>
+              )}
+            </div>
+          </div>
+          <Button
+            variant={file ? 'outline' : 'default'}
+            size="sm"
+            className="rounded-xl shrink-0"
+            onClick={() => inputRef.current?.click()}
+          >
+            {file
+              ? <><X className="w-3 h-3 mr-1" /> Cambiar</>
+              : <><Upload className="w-3 h-3 mr-1" /> Subir</>}
+          </Button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf,image/*"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && onSelect(e.target.files[0])}
+          />
+        </div>
+        {progress !== undefined && progress < 100 && (
+          <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
