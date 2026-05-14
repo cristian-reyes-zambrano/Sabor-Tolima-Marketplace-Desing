@@ -26,7 +26,6 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useCartStore } from '../store/useCartStore';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { AuthModal } from './auth/AuthModal';
-import { AvatarImage } from './SafeImage';
 import { toast } from 'sonner';
 
 export function Navbar() {
@@ -144,34 +143,58 @@ export function Navbar() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="gap-1.5 rounded-xl text-muted-foreground hover:text-foreground pl-1"
+                      className="gap-1.5 rounded-xl text-muted-foreground hover:text-foreground pl-1 focus-visible:ring-0"
                     >
                       {/* Avatar: foto de Google o inicial */}
-                      <AvatarImage
-                        src={user.avatar}
-                        alt={user.name}
-                        size={28}
-                        initial={user.name}
-                        initialClassName="text-xs"
-                        className="ring-2 ring-primary/20"
-                      />
+                      {user.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt={user.name}
+                          width={28}
+                          height={28}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                            (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
+                          }}
+                          className="w-7 h-7 rounded-full object-cover ring-2 ring-primary/20 shrink-0"
+                        />
+                      ) : null}
+                      {/* Fallback inicial — siempre en DOM, oculto si hay avatar */}
+                      <div
+                        style={{ display: user.avatar ? 'none' : 'flex' }}
+                        className="w-7 h-7 rounded-full bg-primary/10 items-center justify-center shrink-0"
+                      >
+                        <span className="text-xs font-bold text-primary leading-none">
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
                       <span className="hidden lg:inline text-sm max-w-[80px] truncate">
                         {user.name.split(' ')[0]}
                       </span>
                       <ChevronDown className="w-3 h-3" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1.5">
+                  <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1.5 z-[60]">
                     {/* User info header */}
                     <div className="px-2 py-2 mb-1">
                       <div className="flex items-center gap-2.5">
-                        <AvatarImage
-                          src={user.avatar}
-                          alt={user.name}
-                          size={36}
-                          initial={user.name}
-                          initialClassName="text-sm"
-                        />
+                        {user.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt={user.name}
+                            width={36}
+                            height={36}
+                            referrerPolicy="no-referrer"
+                            className="w-9 h-9 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-sm font-bold text-primary">
+                              {user.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
                           <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
@@ -181,14 +204,14 @@ export function Navbar() {
                     <div className="h-px bg-border mx-1 mb-1" />
                     <DropdownMenuItem
                       onClick={() => handleNavigate('/profile')}
-                      className="gap-2 rounded-xl"
+                      className="gap-2 rounded-xl cursor-pointer"
                     >
                       <User className="w-4 h-4" />
                       Mi Perfil
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleNavigate('/orders')}
-                      className="gap-2 rounded-xl"
+                      className="gap-2 rounded-xl cursor-pointer"
                     >
                       <Package className="w-4 h-4" />
                       Mis Pedidos
@@ -196,7 +219,7 @@ export function Navbar() {
                     {user.role === 'seller' && (
                       <DropdownMenuItem
                         onClick={() => handleNavigate('/seller-dashboard')}
-                        className="gap-2 rounded-xl"
+                        className="gap-2 rounded-xl cursor-pointer"
                       >
                         <Store className="w-4 h-4" />
                         Panel Vendedor
@@ -205,7 +228,7 @@ export function Navbar() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={handleLogout}
-                      className="gap-2 rounded-xl text-destructive focus:text-destructive"
+                      className="gap-2 rounded-xl cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
                     >
                       <LogOut className="w-4 h-4" />
                       Cerrar Sesión
