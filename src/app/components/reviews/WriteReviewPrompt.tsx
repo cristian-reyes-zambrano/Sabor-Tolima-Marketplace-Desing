@@ -1,11 +1,11 @@
 /**
- * WriteReviewPrompt — Notificación post-pedido para dejar reseña
+ * WriteReviewPrompt — Notificación post-pedido para dejar opinión
  * Aparece en la página de pedidos cuando hay un pedido entregado sin reseña
  */
 import { useState } from 'react';
-import { Star, X } from 'lucide-react';
+import { MessageSquarePlus, X } from 'lucide-react';
 import { Button } from '../ui/button';
-import { WriteReviewModal } from './WriteReviewModal';
+import { ReviewSection } from './ReviewSection';
 
 interface WriteReviewPromptProps {
   restaurantId: string;
@@ -20,57 +20,64 @@ export function WriteReviewPrompt({
   orderId,
   onDismiss,
 }: WriteReviewPromptProps) {
-  const [showModal, setShowModal] = useState(false);
+  const [showSection, setShowSection] = useState(false);
   const [done, setDone] = useState(false);
 
   if (done) return null;
 
-  return (
-    <>
-      <div className="relative p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl animate-fade-in">
-        <button
-          onClick={onDismiss}
-          className="absolute top-3 right-3 p-1 rounded-full hover:bg-amber-100 transition-colors"
-        >
-          <X className="w-3.5 h-3.5 text-amber-600" />
-        </button>
+  if (showSection) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 animate-fade-in">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-bold text-amber-900">
+            Opina sobre <span className="text-primary">{restaurantName}</span>
+          </p>
+          <button
+            onClick={() => setShowSection(false)}
+            className="p-1 rounded-full hover:bg-amber-100 transition-colors"
+          >
+            <X className="w-3.5 h-3.5 text-amber-600" />
+          </button>
+        </div>
+        <ReviewSection restaurantId={restaurantId} restaurantName={restaurantName} />
+      </div>
+    );
+  }
 
-        <div className="flex items-start gap-3">
-          <div className="text-2xl shrink-0">🍽️</div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-amber-900">
-              ¿Cómo estuvo tu pedido?
-            </p>
-            <p className="text-xs text-amber-700 mt-0.5 mb-3">
-              Cuéntanos tu experiencia en <strong>{restaurantName}</strong>
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={() => setShowModal(true)}
-                className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white gap-1.5 h-8 text-xs"
-              >
-                <Star className="w-3.5 h-3.5" />
-                Dejar reseña
-              </Button>
-              <button
-                onClick={onDismiss}
-                className="text-xs text-amber-600 hover:text-amber-800 transition-colors"
-              >
-                Ahora no
-              </button>
-            </div>
+  return (
+    <div className="relative p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl animate-fade-in">
+      <button
+        onClick={onDismiss}
+        className="absolute top-3 right-3 p-1 rounded-full hover:bg-amber-100 transition-colors"
+      >
+        <X className="w-3.5 h-3.5 text-amber-600" />
+      </button>
+
+      <div className="flex items-start gap-3">
+        <div className="text-2xl shrink-0">🍽️</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-amber-900">¿Cómo estuvo tu pedido?</p>
+          <p className="text-xs text-amber-700 mt-0.5 mb-3">
+            Cuéntanos tu experiencia en <strong>{restaurantName}</strong>
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => setShowSection(true)}
+              className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white gap-1.5 h-8 text-xs"
+            >
+              <MessageSquarePlus className="w-3.5 h-3.5" />
+              Dejar opinión
+            </Button>
+            <button
+              onClick={onDismiss}
+              className="text-xs text-amber-600 hover:text-amber-800 transition-colors"
+            >
+              Ahora no
+            </button>
           </div>
         </div>
       </div>
-
-      <WriteReviewModal
-        open={showModal}
-        onClose={() => setShowModal(false)}
-        restaurantId={restaurantId}
-        restaurantName={restaurantName}
-        onSuccess={() => { setDone(true); onDismiss(); }}
-      />
-    </>
+    </div>
   );
 }

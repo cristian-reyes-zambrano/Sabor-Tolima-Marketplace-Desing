@@ -172,28 +172,41 @@ export interface AppOrder {
 export type Order = AppOrder;
 
 // ─── RESEÑA ────────────────────────────────────────────────────────────────
+
+/** Calificaciones por categoría (1-5 cada una) */
+export interface ReviewRatings {
+  sabor: number;       // Sabor de la comida
+  atencion: number;    // Atención / servicio
+  rapidez: number;     // Rapidez de entrega
+  precio: number;      // Relación precio-calidad
+}
+
 export interface Review {
   id: string;
   userId: string;
   userName: string;
   userAvatar?: string;
   restaurantId: string;
-  orderId?: string;          // pedido relacionado (solo compradores verificados)
-  rating: number;            // 1-5
+  orderId?: string;          // pedido relacionado (compradores verificados)
+  /** Promedio calculado de las 4 categorías */
+  rating: number;
+  /** Calificaciones individuales por categoría */
+  ratings: ReviewRatings;
   comment: string;
-  images?: string[];         // fotos opcionales del cliente
+  images?: string[];
   createdAt: string;
   helpful?: number;
-  // badges
   verifiedPurchase?: boolean;
 }
 
-export type ReviewFilter = 'recent' | 'best' | 'photos';
+export type ReviewFilter = 'recent' | 'best' | 'verified';
 
 export interface ReviewStats {
   average: number;
   total: number;
-  distribution: Record<1 | 2 | 3 | 4 | 5, number>; // count per star
+  /** Promedio por categoría */
+  categoryAverages: ReviewRatings;
+  distribution: Record<1 | 2 | 3 | 4 | 5, number>;
 }
 
 // ─── FAVORITOS ─────────────────────────────────────────────────────────────

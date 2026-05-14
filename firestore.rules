@@ -79,5 +79,27 @@ service cloud.firestore {
     match /favorites/{userId} {
       allow read, write: if isOwner(userId);
     }
+
+    // ── Reviews ───────────────────────────────────────────────────────────────
+    match /reviews/{reviewId} {
+      // Cualquiera puede leer reseñas (vista pública del restaurante)
+      allow read: if true;
+      // Solo usuarios autenticados pueden crear — y solo una por restaurante
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.restaurantId is string
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() >= 10
+        && request.resource.data.ratings is map
+        && request.resource.data.ratings.sabor    is number
+        && request.resource.data.ratings.atencion is number
+        && request.resource.data.ratings.rapidez  is number
+        && request.resource.data.ratings.precio   is number;
+      // Solo el autor puede editar su reseña
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Solo el autor o admin puede eliminar
+      allow delete: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+    }
   }
 }

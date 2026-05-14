@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import {
   LayoutDashboard, Package, ShoppingBag, Settings, LogOut,
   TrendingUp, DollarSign, Star, Clock, Plus, Edit2, Trash2,
   ToggleLeft, ToggleRight, Loader2, AlertCircle, CheckCircle2,
   XCircle, ChevronDown, Menu, X, Upload, ImagePlus, Flame,
-  Eye, EyeOff,
+  Eye, EyeOff, BarChart2, Tag, RefreshCw, Bell,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -19,10 +19,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useAuthStore } from '../store/useAuthStore';
 import { useSellerStore } from '../store/useSellerStore';
 import { uploadFile, validateImageFile } from '../../firebase/storage.service';
+import {
+  getOrdersByRestaurant,
+  updateOrderStatus,
+} from '../../firebase/firestore.service';
 import { toast } from 'sonner';
-import type { SellerProduct, MenuCategory, SellerStatus } from '../types';
+import type { SellerProduct, MenuCategory, SellerStatus, AppOrder } from '../types';
 
-type DashTab = 'overview' | 'products' | 'orders' | 'settings';
+type DashTab = 'overview' | 'products' | 'orders' | 'stats' | 'promos' | 'settings';
 
 const MENU_CATEGORIES: { id: MenuCategory; label: string }[] = [
   { id: 'principales', label: 'Platos Fuertes' },
@@ -40,11 +44,41 @@ const STATUS_CONFIG: Record<SellerStatus, { label: string; color: string; bg: st
   suspended: { label: 'Suspendido', color: 'text-gray-700', bg: 'bg-gray-50', icon: AlertCircle },
 };
 
-const MOCK_ORDERS = [
-  { id: '#001', customer: 'María González', items: 'Bandeja Paisa x2', total: 50000, status: 'preparing', time: '12:30 PM' },
-  { id: '#002', customer: 'Carlos Pérez', items: 'Lechona + Avena', total: 33000, status: 'pending', time: '12:45 PM' },
-  { id: '#003', customer: 'Ana Martínez', items: 'Tamal x3', total: 36000, status: 'delivered', time: '11:20 AM' },
-  { id: '#004', customer: 'Luis Torres', items: 'Combo Familiar', total: 75000, status: 'ready', time: '1:00 PM' },
+const MOCK_ORDERS: AppOrder[] = [
+  {
+    id: '#IB-001', userId: 'u1', restaurantId: 'demo', restaurantName: 'Demo',
+    items: [{ id: 'i1', menuItemId: 'm1', restaurantId: 'demo', restaurantName: 'Demo', name: 'Lechona Tolimense Completa', price: 28000, image: '', quantity: 2, notes: '' }],
+    subtotal: 56000, deliveryFee: 4000, discount: 0, total: 60000,
+    status: 'preparing', address: 'Calle 10 # 5-23, Centro, Ibagué',
+    paymentMethod: 'cash', estimatedTime: '25-35 min',
+    createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
+    specialInstructions: 'Sin cebolla, poco picante',
+  },
+  {
+    id: '#IB-002', userId: 'u2', restaurantId: 'demo', restaurantName: 'Demo',
+    items: [{ id: 'i2', menuItemId: 'm2', restaurantId: 'demo', restaurantName: 'Demo', name: 'Tamal Tolimense + Avena', price: 17000, image: '', quantity: 1, notes: '' }],
+    subtotal: 17000, deliveryFee: 3500, discount: 0, total: 20500,
+    status: 'pending', address: 'Carrera 5 # 12-45, La Pola, Ibagué',
+    paymentMethod: 'nequi' as 'cash', estimatedTime: '20-30 min',
+    createdAt: new Date(Date.now() - 5 * 60000).toISOString(),
+    specialInstructions: 'Alérgico al maní — IMPORTANTE',
+  },
+  {
+    id: '#IB-003', userId: 'u3', restaurantId: 'demo', restaurantName: 'Demo',
+    items: [{ id: 'i3', menuItemId: 'm3', restaurantId: 'demo', restaurantName: 'Demo', name: 'Combo Lechona Familiar', price: 75000, image: '', quantity: 1, notes: '' }],
+    subtotal: 75000, deliveryFee: 4000, discount: 11250, total: 67750,
+    status: 'delivered', address: 'Calle 38 # 2-15, El Salado, Ibagué',
+    paymentMethod: 'card', estimatedTime: '30-40 min',
+    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+  },
+  {
+    id: '#IB-004', userId: 'u4', restaurantId: 'demo', restaurantName: 'Demo',
+    items: [{ id: 'i4', menuItemId: 'm4', restaurantId: 'demo', restaurantName: 'Demo', name: 'Sancocho de Gallina Criolla', price: 22000, image: '', quantity: 2, notes: '' }],
+    subtotal: 44000, deliveryFee: 4000, discount: 0, total: 48000,
+    status: 'ready', address: 'Carrera 8 # 45-67, La Pola, Ibagué',
+    paymentMethod: 'pse', estimatedTime: '25-35 min',
+    createdAt: new Date(Date.now() - 45 * 60000).toISOString(),
+  },
 ];
 
 const ORDER_STATUS: Record<string, { label: string; color: string; bg: string }> = {
@@ -58,16 +92,32 @@ const ORDER_STATUS: Record<string, { label: string; color: string; bg: string }>
 export default function SellerDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { profile, products, loadProfile, loadProducts, isLoadingProducts } = useSellerStore();
+  const { profile, products, loadProfile, loadProducts, isLoadingProducts, updateProfile } = useSellerStore();
   const [activeTab, setActiveTab] = useState<DashTab>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<SellerProduct | null>(null);
+  const [orders, setOrders] = useState<AppOrder[]>(MOCK_ORDERS);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+  const loadOrders = useCallback(async () => {
+    if (!user) return;
+    setIsLoadingOrders(true);
+    try {
+      const real = await getOrdersByRestaurant(user.id);
+      setOrders(real.length > 0 ? real : MOCK_ORDERS);
+    } catch {
+      setOrders(MOCK_ORDERS);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (user) {
       loadProfile(user.id);
       loadProducts(user.id);
+      loadOrders();
     }
   }, [user]);
 
@@ -86,10 +136,12 @@ export default function SellerDashboard() {
   const StatusIcon = statusCfg.icon;
 
   const navItems: { id: DashTab; label: string; icon: React.ElementType }[] = [
-    { id: 'overview', label: 'Resumen', icon: LayoutDashboard },
-    { id: 'products', label: 'Productos', icon: Package },
-    { id: 'orders', label: 'Pedidos', icon: ShoppingBag },
-    { id: 'settings', label: 'Configuración', icon: Settings },
+    { id: 'overview',  label: 'Resumen',       icon: LayoutDashboard },
+    { id: 'products',  label: 'Productos',      icon: Package },
+    { id: 'orders',    label: 'Pedidos',        icon: ShoppingBag },
+    { id: 'stats',     label: 'Estadísticas',   icon: BarChart2 },
+    { id: 'promos',    label: 'Promociones',    icon: Tag },
+    { id: 'settings',  label: 'Configuración',  icon: Settings },
   ];
 
   return (
@@ -230,7 +282,7 @@ export default function SellerDashboard() {
             </div>
           )}
 
-          {activeTab === 'overview' && <OverviewTab products={products} />}
+          {activeTab === 'overview' && <OverviewTab products={products} orders={orders} />}
           {activeTab === 'products' && (
             <ProductsTab
               products={products}
@@ -239,8 +291,21 @@ export default function SellerDashboard() {
               onEdit={(p) => { setEditingProduct(p); setShowProductModal(true); }}
             />
           )}
-          {activeTab === 'orders' && <OrdersTab />}
-          {activeTab === 'settings' && <SettingsTab profile={profile} />}
+          {activeTab === 'orders' && (
+            <OrdersTab
+              orders={orders}
+              isLoading={isLoadingOrders}
+              onRefresh={loadOrders}
+              onStatusChange={async (orderId, status) => {
+                await updateOrderStatus(orderId, status);
+                setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+                toast.success('Estado actualizado');
+              }}
+            />
+          )}
+          {activeTab === 'stats'    && <StatsTab products={products} orders={orders} />}
+          {activeTab === 'promos'   && <PromosTab products={products} />}
+          {activeTab === 'settings' && <SettingsTab profile={profile} onSave={updateProfile} />}
         </main>
       </div>
 

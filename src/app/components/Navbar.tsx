@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Package,
   Store,
+  Map,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -104,6 +105,17 @@ export function Navbar() {
 
             {/* Actions — Desktop */}
             <div className="hidden md:flex items-center gap-1">
+              {/* Logistics Map */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleNavigate('/logistics')}
+                className="relative gap-1.5 rounded-xl text-muted-foreground hover:text-foreground"
+              >
+                <Map className="w-4 h-4" />
+                <span className="hidden lg:inline text-sm">Mapa</span>
+              </Button>
+
               {/* Favorites */}
               <Button
                 variant="ghost"
@@ -289,6 +301,14 @@ export function Navbar() {
 
                 {/* Nav links */}
                 <div className="space-y-1">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-3 rounded-xl"
+                    onClick={() => handleNavigate('/logistics')}
+                  >
+                    <Map className="w-4 h-4" />
+                    Mapa Logístico
+                  </Button>
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-3 rounded-xl"

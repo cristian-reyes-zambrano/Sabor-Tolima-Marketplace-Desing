@@ -230,16 +230,25 @@ export async function getAdminStats(): Promise<{
 }
 
 // ─── REVIEWS ─────────────────────────────────────────────────────────────────
-import type { Review, ReviewStats } from '../app/types';
+import type { Review, ReviewStats, ReviewRatings } from '../app/types';
 
 const REVIEWS = 'reviews';
 
+/** Calcula el promedio de las 4 categorías */
+function calcAverage(ratings: ReviewRatings): number {
+  const vals = [ratings.sabor, ratings.atencion, ratings.rapidez, ratings.precio];
+  const sum = vals.reduce((a, b) => a + b, 0);
+  return Math.round((sum / vals.length) * 10) / 10;
+}
+
 export async function createReview(
-  review: Omit<Review, 'id' | 'createdAt'>
+  review: Omit<Review, 'id' | 'createdAt' | 'rating'>
 ): Promise<string> {
+  const rating = calcAverage(review.ratings);
   if (!isFirebaseConfigured()) return `demo-review-${Date.now()}`;
   const ref = await addDoc(collection(db, REVIEWS), {
     ...review,
+    rating,
     createdAt: serverTimestamp(),
   });
   return ref.id;
@@ -247,7 +256,7 @@ export async function createReview(
 
 export async function getReviewsByRestaurant(
   restaurantId: string,
-  limitCount = 20
+  limitCount = 30
 ): Promise<Review[]> {
   if (!isFirebaseConfigured()) return DEMO_REVIEWS.filter((r) => r.restaurantId === restaurantId);
   const q = query(
@@ -281,29 +290,98 @@ export async function hasUserReviewedRestaurant(
 
 export async function getReviewStats(restaurantId: string): Promise<ReviewStats> {
   const reviews = await getReviewsByRestaurant(restaurantId, 200);
-  if (reviews.length === 0) {
-    return { average: 0, total: 0, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
-  }
+  const empty: ReviewStats = {
+    average: 0,
+    total: 0,
+    categoryAverages: { sabor: 0, atencion: 0, rapidez: 0, precio: 0 },
+    distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+  };
+  if (reviews.length === 0) return empty;
+
   const dist: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  let sum = 0;
+  let sumTotal = 0;
+  const catSum: ReviewRatings = { sabor: 0, atencion: 0, rapidez: 0, precio: 0 };
+
   reviews.forEach((r) => {
     const star = Math.min(5, Math.max(1, Math.round(r.rating))) as 1 | 2 | 3 | 4 | 5;
     dist[star]++;
-    sum += r.rating;
+    sumTotal += r.rating;
+    if (r.ratings) {
+      catSum.sabor    += r.ratings.sabor    ?? 0;
+      catSum.atencion += r.ratings.atencion ?? 0;
+      catSum.rapidez  += r.ratings.rapidez  ?? 0;
+      catSum.precio   += r.ratings.precio   ?? 0;
+    }
   });
+
+  const n = reviews.length;
   return {
-    average: Math.round((sum / reviews.length) * 10) / 10,
-    total: reviews.length,
+    average: Math.round((sumTotal / n) * 10) / 10,
+    total: n,
+    categoryAverages: {
+      sabor:    Math.round((catSum.sabor    / n) * 10) / 10,
+      atencion: Math.round((catSum.atencion / n) * 10) / 10,
+      rapidez:  Math.round((catSum.rapidez  / n) * 10) / 10,
+      precio:   Math.round((catSum.precio   / n) * 10) / 10,
+    },
     distribution: dist,
   };
 }
 
-// Demo reviews for mode without Firebase
+// Demo reviews
 const DEMO_REVIEWS: Review[] = [
-  { id: 'r1', userId: 'u1', userName: 'María González', restaurantId: '1', rating: 5, comment: 'Excelente lechona, muy auténtica y deliciosa. La mejor que he probado en Ibagué. Llegó caliente y bien empacada.', createdAt: new Date(Date.now() - 2 * 86400000).toISOString(), verifiedPurchase: true, helpful: 12 },
-  { id: 'r2', userId: 'u2', userName: 'Carlos Rodríguez', restaurantId: '1', rating: 4, comment: 'Muy buena atención y los platos son generosos. El tamal es espectacular. Recomendado 100%.', createdAt: new Date(Date.now() - 7 * 86400000).toISOString(), verifiedPurchase: true, helpful: 8 },
-  { id: 'r3', userId: 'u3', userName: 'Ana Martínez', restaurantId: '1', rating: 5, comment: 'La avena tolimense es increíble, preparada al fuego de leña como debe ser. Volveré pronto.', createdAt: new Date(Date.now() - 14 * 86400000).toISOString(), verifiedPurchase: true, helpful: 5 },
-  { id: 'r4', userId: 'u4', userName: 'Luis Torres', restaurantId: '1', rating: 4, comment: 'Buena comida típica, porciones generosas. El servicio fue rápido.', createdAt: new Date(Date.now() - 20 * 86400000).toISOString(), verifiedPurchase: false, helpful: 3 },
-  { id: 'r5', userId: 'u5', userName: 'Sofía Herrera', restaurantId: '5', rating: 5, comment: 'Las hamburguesas son increíbles, la carne es de primera calidad. Los wings buffalo son adictivos.', createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), verifiedPurchase: true, helpful: 15 },
-  { id: 'r6', userId: 'u6', userName: 'Diego Morales', restaurantId: '5', rating: 4, comment: 'Muy buena comida, llegó rápido y caliente. El combo es una excelente relación precio-calidad.', createdAt: new Date(Date.now() - 10 * 86400000).toISOString(), verifiedPurchase: true, helpful: 7 },
+  {
+    id: 'r1', userId: 'u1', userName: 'María Fernanda Perdomo',
+    userAvatar: undefined,
+    restaurantId: '1', rating: 4.8,
+    ratings: { sabor: 5, atencion: 5, rapidez: 4, precio: 5 },
+    comment: 'La lechona de la familia Perdomo es insuperable. Llegó caliente, bien empacada y con el ají de maní que la hace única en Ibagué. Llevo 10 años siendo cliente.',
+    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    verifiedPurchase: true, helpful: 12,
+  },
+  {
+    id: 'r2', userId: 'u2', userName: 'Carlos Andrés Vargas',
+    userAvatar: undefined,
+    restaurantId: '1', rating: 4.0,
+    ratings: { sabor: 4, atencion: 4, rapidez: 4, precio: 4 },
+    comment: 'Muy buena atención y las porciones son generosas. El tamal tolimense es espectacular. Recomendado para quien quiera comer auténtico en el Centro de Ibagué.',
+    createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
+    verifiedPurchase: true, helpful: 8,
+  },
+  {
+    id: 'r3', userId: 'u3', userName: 'Ana Lucía Ospina',
+    userAvatar: undefined,
+    restaurantId: '1', rating: 4.5,
+    ratings: { sabor: 5, atencion: 4, rapidez: 5, precio: 4 },
+    comment: 'La avena tolimense preparada al fuego de leña es increíble. Sabe exactamente como la que hacía mi abuela en Ibagué. Volveré pronto.',
+    createdAt: new Date(Date.now() - 14 * 86400000).toISOString(),
+    verifiedPurchase: false, helpful: 5,
+  },
+  {
+    id: 'r4', userId: 'u4', userName: 'Luis Eduardo Torres',
+    userAvatar: undefined,
+    restaurantId: '1', rating: 3.8,
+    ratings: { sabor: 4, atencion: 4, rapidez: 3, precio: 4 },
+    comment: 'Buena comida típica ibagueña, porciones generosas. El servicio fue un poco lento pero la calidad lo vale.',
+    createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
+    verifiedPurchase: false, helpful: 3,
+  },
+  {
+    id: 'r5', userId: 'u5', userName: 'Sofía Herrera Ríos',
+    userAvatar: undefined,
+    restaurantId: '5', rating: 4.8,
+    ratings: { sabor: 5, atencion: 5, rapidez: 5, precio: 4 },
+    comment: 'Los chorizos tolimenses a la parrilla son increíbles. El ají de maní que los acompaña es adictivo. El mejor asadero de La Pola sin duda.',
+    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+    verifiedPurchase: true, helpful: 15,
+  },
+  {
+    id: 'r6', userId: 'u6', userName: 'Diego Morales Ibáñez',
+    userAvatar: undefined,
+    restaurantId: '5', rating: 4.0,
+    ratings: { sabor: 4, atencion: 4, rapidez: 4, precio: 4 },
+    comment: 'Las costillas BBQ con panela tolimense son una delicia. Llegaron rápido y calientes. Excelente relación precio-calidad para Ibagué.',
+    createdAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+    verifiedPurchase: true, helpful: 7,
+  },
 ];

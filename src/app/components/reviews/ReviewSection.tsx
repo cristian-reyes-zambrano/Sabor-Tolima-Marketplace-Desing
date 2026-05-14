@@ -1,14 +1,21 @@
 /**
- * ReviewSection — Sistema completo de reseñas
- * Incluye: stats, filtros, lista, formulario y skeleton loaders
+ * ReviewSection — Sistema de opiniones con calificaciones por categorías
+ *
+ * Categorías: Sabor · Atención · Rapidez · Precio
+ * Promedio general = media de las 4 categorías
+ * Solo usuarios autenticados pueden opinar
+ * Badge "Compra verificada" si el usuario tiene un pedido en ese restaurante
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Star, ThumbsUp, Camera, BadgeCheck, ShoppingBag, Filter, X, Loader2, ImagePlus } from 'lucide-react';
+import {
+  BadgeCheck, ShoppingBag, Filter, X, Loader2,
+  MessageSquarePlus, ChevronDown, ChevronUp,
+} from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Skeleton } from '../ui/skeleton';
 import {
   getReviewsByRestaurant,
@@ -16,94 +23,105 @@ import {
   createReview,
   hasUserReviewedRestaurant,
 } from '../../../firebase/firestore.service';
-import { uploadFile, validateImageFile } from '../../../firebase/storage.service';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'sonner';
-import type { Review, ReviewStats, ReviewFilter } from '../../types';
+import type { Review, ReviewStats, ReviewFilter, ReviewRatings } from '../../types';
 
-interface ReviewSectionProps {
-  restaurantId: string;
-  restaurantName: string;
+// ─── Constantes ───────────────────────────────────────────────────────────────
+const CATEGORIES: { key: keyof ReviewRatings; label: string; emoji: string }[] = [
+  { key: 'sabor',    label: 'Sabor',    emoji: '🍽️' },
+  { key: 'atencion', label: 'Atención', emoji: '🤝' },
+  { key: 'rapidez',  label: 'Rapidez',  emoji: '⚡' },
+  { key: 'precio',   label: 'Precio',   emoji: '💰' },
+];
+
+const SCORE_LABELS = ['', 'Muy malo', 'Malo', 'Regular', 'Bueno', 'Excelente'];
+const SCORE_COLORS = ['', 'text-red-500', 'text-orange-500', 'text-yellow-500', 'text-lime-500', 'text-green-600'];
+const SCORE_BG    = ['', 'bg-red-50',   'bg-orange-50',   'bg-yellow-50',   'bg-lime-50',   'bg-green-50'];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return 'Hoy';
+  if (days === 1) return 'Ayer';
+  if (days < 7)  return `${days} días atrás`;
+  if (days < 30) return `${Math.floor(days / 7)} sem. atrás`;
+  return `${Math.floor(days / 30)} meses atrás`;
 }
 
-// ─── Star Rating Input ────────────────────────────────────────────────────────
-function StarRatingInput({
-  value,
-  onChange,
+function calcAvg(r: ReviewRatings): number {
+  return Math.round(((r.sabor + r.atencion + r.rapidez + r.precio) / 4) * 10) / 10;
+}
+
+// ─── ScoreDot — indicador visual de puntuación ────────────────────────────────
+function ScoreDot({ value }: { value: number }) {
+  const color = value >= 4.5 ? 'bg-green-500' : value >= 3.5 ? 'bg-lime-500' : value >= 2.5 ? 'bg-yellow-500' : 'bg-red-500';
+  return <span className={`inline-block w-2 h-2 rounded-full ${color} shrink-0`} />;
+}
+
+// ─── CategoryRatingInput ──────────────────────────────────────────────────────
+function CategoryRatingInput({
+  label, emoji, value, onChange,
 }: {
-  value: number;
-  onChange: (v: number) => void;
+  label: string; emoji: string; value: number; onChange: (v: number) => void;
 }) {
   const [hovered, setHovered] = useState(0);
-  const labels = ['', 'Muy malo', 'Malo', 'Regular', 'Bueno', 'Excelente'];
+  const active = hovered || value;
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-1.5 w-24 shrink-0">
+        <span className="text-base">{emoji}</span>
+        <span className="text-xs font-semibold text-foreground">{label}</span>
+      </div>
       <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
+        {[1, 2, 3, 4, 5].map((n) => (
           <button
-            key={star}
+            key={n}
             type="button"
-            onMouseEnter={() => setHovered(star)}
+            onMouseEnter={() => setHovered(n)}
             onMouseLeave={() => setHovered(0)}
-            onClick={() => onChange(star)}
-            className="transition-transform hover:scale-110 active:scale-95"
+            onClick={() => onChange(n)}
+            className={`w-8 h-8 rounded-lg text-xs font-bold transition-all border ${
+              n <= active
+                ? `${SCORE_BG[active]} ${SCORE_COLORS[active]} border-current`
+                : 'bg-muted text-muted-foreground border-transparent hover:border-border'
+            }`}
           >
-            <Star
-              className={`w-9 h-9 transition-colors duration-150 ${
-                star <= (hovered || value)
-                  ? 'fill-yellow-400 text-yellow-400'
-                  : 'text-muted-foreground/30'
-              }`}
-            />
+            {n}
           </button>
         ))}
       </div>
-      {(hovered || value) > 0 && (
-        <p className="text-sm font-semibold text-foreground animate-fade-in">
-          {labels[hovered || value]}
-        </p>
-      )}
+      <span className={`text-[11px] font-semibold w-16 text-right shrink-0 ${active ? SCORE_COLORS[active] : 'text-muted-foreground'}`}>
+        {active ? SCORE_LABELS[active] : '—'}
+      </span>
     </div>
   );
 }
 
-// ─── Rating Bar ───────────────────────────────────────────────────────────────
-function RatingBar({ star, count, total }: { star: number; count: number; total: number }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+// ─── CategoryBar — barra de promedio por categoría ────────────────────────────
+function CategoryBar({ label, emoji, value }: { label: string; emoji: string; value: number }) {
+  const pct = (value / 5) * 100;
+  const color = value >= 4 ? 'bg-green-500' : value >= 3 ? 'bg-yellow-400' : 'bg-red-400';
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground w-3 text-right">{star}</span>
-      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 shrink-0" />
-      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-        <div
-          className="h-full bg-yellow-400 rounded-full transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
+      <span className="text-sm">{emoji}</span>
+      <span className="text-xs text-muted-foreground w-16 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs text-muted-foreground w-6 text-right">{count}</span>
+      <span className="text-xs font-bold text-foreground w-6 text-right shrink-0">{value || '—'}</span>
     </div>
   );
 }
 
-// ─── Review Card ──────────────────────────────────────────────────────────────
+// ─── ReviewCard ───────────────────────────────────────────────────────────────
 function ReviewCard({ review }: { review: Review }) {
-  const initials = review.userName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
-  const timeAgo = (iso: string) => {
-    const diff = Date.now() - new Date(iso).getTime();
-    const days = Math.floor(diff / 86400000);
-    if (days === 0) return 'Hoy';
-    if (days === 1) return 'Ayer';
-    if (days < 7) return `${days} días atrás`;
-    if (days < 30) return `${Math.floor(days / 7)} semanas atrás`;
-    return `${Math.floor(days / 30)} meses atrás`;
-  };
+  const [expanded, setExpanded] = useState(false);
+  const initials = review.userName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+  const avg = review.ratings ? calcAvg(review.ratings) : review.rating;
+  const longComment = review.comment.length > 160;
 
   return (
     <Card className="border-0 shadow-sm rounded-2xl hover:shadow-md transition-shadow">
@@ -114,7 +132,8 @@ function ReviewCard({ review }: { review: Review }) {
             <img
               src={review.userAvatar}
               alt={review.userName}
-              className="w-10 h-10 rounded-full object-cover shrink-0"
+              referrerPolicy="no-referrer"
+              className="w-10 h-10 rounded-full object-cover shrink-0 ring-2 ring-border"
               loading="lazy"
             />
           ) : (
@@ -125,61 +144,59 @@ function ReviewCard({ review }: { review: Review }) {
 
           <div className="flex-1 min-w-0">
             {/* Header */}
-            <div className="flex items-start justify-between gap-2 mb-1.5">
+            <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h4 className="text-sm font-bold text-foreground">{review.userName}</h4>
-                  {review.verifiedPurchase && (
-                    <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] gap-0.5 px-1.5 py-0">
+                  {review.verifiedPurchase ? (
+                    <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] gap-0.5 px-1.5 py-0 h-4">
                       <BadgeCheck className="w-2.5 h-2.5" />
-                      Compra verificada
+                      Verificado
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground">
+                      Registrado
                     </Badge>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {timeAgo(review.createdAt)}
-                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{timeAgo(review.createdAt)}</p>
               </div>
-              {/* Stars */}
-              <div className="flex items-center gap-0.5 shrink-0">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Star
-                    key={s}
-                    className={`w-3.5 h-3.5 ${
-                      s <= review.rating
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-muted-foreground/20'
-                    }`}
-                  />
-                ))}
+
+              {/* Promedio general */}
+              <div className="flex items-center gap-1 shrink-0 bg-muted rounded-xl px-2 py-1">
+                <ScoreDot value={avg} />
+                <span className="text-sm font-bold text-foreground">{avg.toFixed(1)}</span>
+                <span className="text-[10px] text-muted-foreground">/5</span>
               </div>
             </div>
 
-            {/* Comment */}
-            <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-              {review.comment}
-            </p>
-
-            {/* Images */}
-            {review.images && review.images.length > 0 && (
-              <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-                {review.images.map((img, i) => (
-                  <img
-                    key={i}
-                    src={img}
-                    alt={`Foto ${i + 1}`}
-                    className="w-20 h-20 rounded-xl object-cover shrink-0 border border-border"
-                    loading="lazy"
-                  />
+            {/* Calificaciones por categoría */}
+            {review.ratings && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-3 p-2.5 bg-muted/40 rounded-xl">
+                {CATEGORIES.map(({ key, label, emoji }) => (
+                  <div key={key} className="flex items-center gap-1.5">
+                    <span className="text-xs">{emoji}</span>
+                    <span className="text-[11px] text-muted-foreground">{label}</span>
+                    <span className={`text-[11px] font-bold ml-auto ${SCORE_COLORS[review.ratings[key]] || 'text-foreground'}`}>
+                      {review.ratings[key]}/5
+                    </span>
+                  </div>
                 ))}
               </div>
             )}
 
-            {/* Helpful */}
-            {(review.helpful ?? 0) > 0 && (
-              <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <ThumbsUp className="w-3.5 h-3.5" />
-                <span>{review.helpful} personas encontraron esto útil</span>
+            {/* Comentario */}
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {longComment && !expanded
+                ? `${review.comment.slice(0, 160)}…`
+                : review.comment}
+            </p>
+            {longComment && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="flex items-center gap-1 text-xs text-primary mt-1 hover:text-primary/80 transition-colors"
+              >
+                {expanded ? <><ChevronUp className="w-3 h-3" /> Ver menos</> : <><ChevronDown className="w-3 h-3" /> Ver más</>}
               </button>
             )}
           </div>
@@ -199,7 +216,8 @@ function ReviewSkeleton() {
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-14 w-full" />
           </div>
         </div>
       </CardContent>
@@ -207,96 +225,67 @@ function ReviewSkeleton() {
   );
 }
 
-// ─── Write Review Modal ───────────────────────────────────────────────────────
+// ─── WriteReviewModal ─────────────────────────────────────────────────────────
 function WriteReviewModal({
-  open,
-  onClose,
-  restaurantId,
-  restaurantName,
-  onSuccess,
+  open, onClose, restaurantId, restaurantName, onSuccess,
 }: {
-  open: boolean;
-  onClose: () => void;
-  restaurantId: string;
-  restaurantName: string;
+  open: boolean; onClose: () => void;
+  restaurantId: string; restaurantName: string;
   onSuccess: () => void;
 }) {
   const { user } = useAuthStore();
-  const [rating, setRating] = useState(0);
+  const [ratings, setRatings] = useState<ReviewRatings>({ sabor: 0, atencion: 0, rapidez: 0, precio: 0 });
   const [comment, setComment] = useState('');
-  const [images, setImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleImageAdd = (files: FileList | null) => {
-    if (!files) return;
-    const valid: File[] = [];
-    const previews: string[] = [];
-    Array.from(files).slice(0, 3 - images.length).forEach((file) => {
-      const err = validateImageFile(file);
-      if (err) { toast.error(err); return; }
-      valid.push(file);
-      previews.push(URL.createObjectURL(file));
-    });
-    setImages((prev) => [...prev, ...valid]);
-    setImagePreviews((prev) => [...prev, ...previews]);
-  };
+  const avg = ratings.sabor && ratings.atencion && ratings.rapidez && ratings.precio
+    ? calcAvg(ratings)
+    : null;
 
-  const removeImage = (i: number) => {
-    setImages((prev) => prev.filter((_, idx) => idx !== i));
-    setImagePreviews((prev) => prev.filter((_, idx) => idx !== i));
-  };
+  const allRated = Object.values(ratings).every((v) => v > 0);
 
   const handleSubmit = async () => {
     if (!user) return;
-    if (rating === 0) { toast.error('Selecciona una calificación'); return; }
+    if (!allRated) { toast.error('Califica todas las categorías'); return; }
     if (comment.trim().length < 10) { toast.error('El comentario debe tener al menos 10 caracteres'); return; }
 
     setIsSubmitting(true);
     try {
-      // Upload images
-      const imageUrls: string[] = [];
-      for (const img of images) {
-        const url = await uploadFile(img, 'products', user.id);
-        imageUrls.push(url);
-      }
-
       await createReview({
         userId: user.id,
         userName: user.name,
         userAvatar: user.avatar,
         restaurantId,
-        rating,
+        ratings,
         comment: comment.trim(),
-        images: imageUrls,
-        verifiedPurchase: true,
+        verifiedPurchase: false, // se actualiza desde el backend si tiene pedido
         helpful: 0,
       });
-
-      toast.success('¡Reseña publicada! Gracias por tu opinión 🙏');
+      toast.success('¡Opinión publicada! Gracias por tu reseña 🙏');
       onSuccess();
-      onClose();
+      handleClose();
     } catch {
-      toast.error('Error al publicar la reseña. Intenta de nuevo.');
+      toast.error('Error al publicar la opinión. Intenta de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
-    setRating(0);
+    setRatings({ sabor: 0, atencion: 0, rapidez: 0, precio: 0 });
     setComment('');
-    setImages([]);
-    setImagePreviews([]);
     onClose();
   };
+
+  const setCategory = (key: keyof ReviewRatings, value: number) =>
+    setRatings((prev) => ({ ...prev, [key]: value }));
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-md rounded-3xl border-0 shadow-2xl p-0 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-br from-primary to-accent px-6 pt-6 pb-8 text-center">
-          <button onClick={handleClose} className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30">
+        <div className="bg-gradient-to-br from-primary to-accent px-6 pt-6 pb-7 text-center relative">
+          <button onClick={handleClose} className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors">
             <X className="w-4 h-4 text-white" />
           </button>
           <div className="text-3xl mb-2">⭐</div>
@@ -306,57 +295,63 @@ function WriteReviewModal({
           <DialogDescription className="text-white/75 text-xs mt-1">
             {restaurantName}
           </DialogDescription>
+          {avg !== null && (
+            <div className="mt-3 inline-flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1">
+              <span className="text-white text-sm font-bold">{avg.toFixed(1)}</span>
+              <span className="text-white/70 text-xs">promedio</span>
+            </div>
+          )}
         </div>
 
         <div className="p-5 space-y-5">
-          {/* Stars */}
-          <StarRatingInput value={rating} onChange={setRating} />
+          {/* Calificaciones por categoría */}
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-foreground uppercase tracking-wide">
+              Califica cada aspecto
+            </p>
+            {CATEGORIES.map(({ key, label, emoji }) => (
+              <CategoryRatingInput
+                key={key}
+                label={label}
+                emoji={emoji}
+                value={ratings[key]}
+                onChange={(v) => setCategory(key, v)}
+              />
+            ))}
+          </div>
 
-          {/* Comment */}
+          {/* Comentario */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Tu opinión *
-              <span className="text-muted-foreground font-normal ml-1">
-                ({comment.length}/300)
-              </span>
+            <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+              <span>Tu opinión *</span>
+              <span className="text-muted-foreground font-normal">{comment.length}/400</span>
             </label>
             <Textarea
               placeholder="Cuéntanos sobre la comida, el servicio, el tiempo de entrega..."
               value={comment}
-              onChange={(e) => setComment(e.target.value.slice(0, 300))}
+              onChange={(e) => setComment(e.target.value.slice(0, 400))}
               className="rounded-xl resize-none text-sm"
               rows={4}
             />
           </div>
 
-          {/* Images */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <Camera className="w-3.5 h-3.5" />
-              Fotos (opcional · máx 3)
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {imagePreviews.map((src, i) => (
-                <div key={i} className="relative w-20 h-20">
-                  <img src={src} alt="" className="w-full h-full object-cover rounded-xl border border-border" />
-                  <button
-                    onClick={() => removeImage(i)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-white rounded-full flex items-center justify-center shadow-sm"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+          {/* Info usuario */}
+          {user && (
+            <div className="flex items-center gap-2.5 p-3 bg-muted/50 rounded-xl">
+              {user.avatar ? (
+                <img src={user.avatar} alt={user.name} referrerPolicy="no-referrer"
+                  className="w-8 h-8 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-primary">{user.name.charAt(0)}</span>
                 </div>
-              ))}
-              {imagePreviews.length < 3 && (
-                <label className="w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all">
-                  <ImagePlus className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground">Agregar</span>
-                  <input type="file" accept="image/*" multiple className="hidden"
-                    onChange={(e) => handleImageAdd(e.target.files)} />
-                </label>
               )}
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate">{user.name}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3">
@@ -365,14 +360,12 @@ function WriteReviewModal({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isSubmitting || rating === 0}
+              disabled={isSubmitting || !allRated || comment.trim().length < 10}
               className="flex-1 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold"
             >
-              {isSubmitting ? (
-                <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Publicando...</>
-              ) : (
-                'Publicar reseña'
-              )}
+              {isSubmitting
+                ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Publicando...</>
+                : 'Publicar opinión'}
             </Button>
           </div>
         </div>
@@ -382,14 +375,19 @@ function WriteReviewModal({
 }
 
 // ─── Main ReviewSection ───────────────────────────────────────────────────────
+interface ReviewSectionProps {
+  restaurantId: string;
+  restaurantName: string;
+}
+
 export function ReviewSection({ restaurantId, restaurantName }: ReviewSectionProps) {
   const { user, isAuthenticated } = useAuthStore();
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [stats, setStats] = useState<ReviewStats | null>(null);
+  const [reviews, setReviews]     = useState<Review[]>([]);
+  const [stats, setStats]         = useState<ReviewStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<ReviewFilter>('recent');
-  const [showWriteModal, setShowWriteModal] = useState(false);
-  const [canReview, setCanReview] = useState(true); // simplified: allow all authenticated users
+  const [filter, setFilter]       = useState<ReviewFilter>('recent');
+  const [showModal, setShowModal] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -409,88 +407,113 @@ export function ReviewSection({ restaurantId, restaurantName }: ReviewSectionPro
 
   useEffect(() => {
     if (user) {
-      hasUserReviewedRestaurant(user.id, restaurantId).then((has) => setCanReview(!has));
+      hasUserReviewedRestaurant(user.id, restaurantId).then(setAlreadyReviewed);
     }
   }, [user, restaurantId]);
 
-  // Apply filter
   const filteredReviews = [...reviews].sort((a, b) => {
-    if (filter === 'best') return b.rating - a.rating;
-    if (filter === 'photos') return (b.images?.length ?? 0) - (a.images?.length ?? 0);
+    if (filter === 'best')     return b.rating - a.rating;
+    if (filter === 'verified') return (b.verifiedPurchase ? 1 : 0) - (a.verifiedPurchase ? 1 : 0);
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  }).filter((r) => filter !== 'photos' || (r.images?.length ?? 0) > 0);
+  });
 
-  const avgRating = stats?.average ?? 0;
-  const totalReviews = stats?.total ?? 0;
-  const dist = stats?.distribution ?? { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const avg   = stats?.average ?? 0;
+  const total = stats?.total ?? 0;
+  const dist  = stats?.distribution ?? { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const cats  = stats?.categoryAverages ?? { sabor: 0, atencion: 0, rapidez: 0, precio: 0 };
 
   return (
     <div className="space-y-5">
       {/* Stats card */}
       <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
         <CardContent className="p-5">
-          <div className="flex items-center gap-6">
-            {/* Big number */}
+          {/* Promedio general + distribución */}
+          <div className="flex items-start gap-5 mb-4">
             <div className="text-center shrink-0">
-              <p className="text-5xl font-bold text-foreground leading-none">{avgRating || '—'}</p>
+              <p className="text-5xl font-bold text-foreground leading-none tabular-nums">
+                {avg ? avg.toFixed(1) : '—'}
+              </p>
               <div className="flex items-center gap-0.5 justify-center mt-2">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <Star
+                  <div
                     key={s}
-                    className={`w-4 h-4 ${
-                      s <= Math.round(avgRating)
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-muted-foreground/20'
+                    className={`w-3 h-3 rounded-sm transition-colors ${
+                      s <= Math.round(avg) ? 'bg-primary' : 'bg-muted'
                     }`}
                   />
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                {totalReviews} {totalReviews === 1 ? 'reseña' : 'reseñas'}
+                {total} {total === 1 ? 'opinión' : 'opiniones'}
               </p>
             </div>
 
-            {/* Bars */}
-            <div className="flex-1 space-y-1.5">
-              {([5, 4, 3, 2, 1] as const).map((star) => (
-                <RatingBar key={star} star={star} count={dist[star]} total={totalReviews} />
-              ))}
+            {/* Barras de distribución */}
+            <div className="flex-1 space-y-1">
+              {([5, 4, 3, 2, 1] as const).map((star) => {
+                const pct = total > 0 ? Math.round((dist[star] / total) * 100) : 0;
+                return (
+                  <div key={star} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-3 text-right">{star}</span>
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground w-5 text-right">{dist[star]}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Write review CTA */}
+          {/* Promedios por categoría */}
+          {total > 0 && (
+            <div className="space-y-2 pt-3 border-t border-border">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
+                Promedio por categoría
+              </p>
+              {CATEGORIES.map(({ key, label, emoji }) => (
+                <CategoryBar key={key} label={label} emoji={emoji} value={cats[key]} />
+              ))}
+            </div>
+          )}
+
+          {/* CTA */}
           <div className="mt-4 pt-4 border-t border-border">
             {!isAuthenticated ? (
-              <p className="text-xs text-center text-muted-foreground">
-                Inicia sesión para dejar una reseña
-              </p>
-            ) : canReview ? (
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-xl p-3">
+                <ShoppingBag className="w-4 h-4 shrink-0" />
+                Inicia sesión con Google para dejar tu opinión
+              </div>
+            ) : alreadyReviewed ? (
+              <div className="flex items-center justify-center gap-2 text-xs text-green-700 bg-green-50 rounded-xl p-2.5">
+                <BadgeCheck className="w-4 h-4" />
+                Ya dejaste una opinión para este restaurante
+              </div>
+            ) : (
               <Button
-                onClick={() => setShowWriteModal(true)}
+                onClick={() => setShowModal(true)}
                 className="w-full rounded-xl bg-primary hover:bg-primary/90 text-white gap-2"
                 size="sm"
               >
-                <Star className="w-4 h-4" />
-                Escribir una reseña
+                <MessageSquarePlus className="w-4 h-4" />
+                Escribir una opinión
               </Button>
-            ) : (
-              <div className="flex items-center justify-center gap-2 text-xs text-green-700 bg-green-50 rounded-xl p-2.5">
-                <BadgeCheck className="w-4 h-4" />
-                Ya dejaste una reseña para este restaurante
-              </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Filters */}
-      {totalReviews > 0 && (
-        <div className="flex items-center gap-2">
+      {/* Filtros */}
+      {total > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
           {([
-            { id: 'recent' as ReviewFilter, label: 'Recientes' },
-            { id: 'best' as ReviewFilter, label: 'Mejor calificadas' },
-            { id: 'photos' as ReviewFilter, label: 'Con fotos' },
+            { id: 'recent'   as ReviewFilter, label: 'Recientes' },
+            { id: 'best'     as ReviewFilter, label: 'Mejor calificadas' },
+            { id: 'verified' as ReviewFilter, label: 'Verificadas' },
           ]).map(({ id, label }) => (
             <button
               key={id}
@@ -507,23 +530,17 @@ export function ReviewSection({ restaurantId, restaurantName }: ReviewSectionPro
         </div>
       )}
 
-      {/* Reviews list */}
+      {/* Lista */}
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <ReviewSkeleton key={i} />)}
         </div>
       ) : filteredReviews.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-4xl mb-3">
-            {filter === 'photos' ? '📷' : '⭐'}
-          </div>
-          <p className="text-sm font-semibold text-foreground mb-1">
-            {filter === 'photos' ? 'Sin reseñas con fotos' : 'Sin reseñas aún'}
-          </p>
+          <div className="text-4xl mb-3">⭐</div>
+          <p className="text-sm font-semibold text-foreground mb-1">Sin opiniones aún</p>
           <p className="text-xs text-muted-foreground">
-            {filter === 'photos'
-              ? 'Sé el primero en subir fotos de tu pedido'
-              : '¡Sé el primero en opinar sobre este restaurante!'}
+            ¡Sé el primero en opinar sobre este restaurante!
           </p>
         </div>
       ) : (
@@ -534,10 +551,9 @@ export function ReviewSection({ restaurantId, restaurantName }: ReviewSectionPro
         </div>
       )}
 
-      {/* Write review modal */}
       <WriteReviewModal
-        open={showWriteModal}
-        onClose={() => setShowWriteModal(false)}
+        open={showModal}
+        onClose={() => setShowModal(false)}
         restaurantId={restaurantId}
         restaurantName={restaurantName}
         onSuccess={loadData}

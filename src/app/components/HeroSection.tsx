@@ -33,19 +33,19 @@ export function HeroSection({ onSearch, searchQuery }: HeroSectionProps) {
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-full mb-6">
           <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           <span className="text-xs font-medium text-white/90">
-            Más de 1,500 comidas servidas hoy
+            La gastronomía de Ibagué, ahora a domicilio
           </span>
         </div>
 
         {/* Headline */}
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-3">
-          El sabor del Tolima,{' '}
+          El sabor de Ibagué,{' '}
           <span className="text-accent">en tu puerta</span>
         </h1>
 
         <p className="text-white/70 text-base sm:text-lg mb-8 max-w-xl leading-relaxed">
-          Descubre restaurantes auténticos, comida rápida y gastronomía gourmet.
-          Todo en un solo lugar.
+          Tamales de Don José, lechona de La Tradición, café del Centro y más.
+          Los mejores sabores ibagueños directo a tu hogar.
         </p>
 
         {/* Search */}
@@ -53,7 +53,7 @@ export function HeroSection({ onSearch, searchQuery }: HeroSectionProps) {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
           <Input
             type="text"
-            placeholder="Busca tamales, hamburguesas, sushi..."
+            placeholder="Busca tamales, lechona, asados, café..."
             value={searchQuery}
             onChange={(e) => onSearch(e.target.value)}
             className="pl-12 pr-4 h-14 bg-white text-foreground border-0 rounded-2xl text-base shadow-2xl focus-visible:ring-2 focus-visible:ring-primary/30 placeholder:text-muted-foreground/70"
@@ -67,8 +67,8 @@ export function HeroSection({ onSearch, searchQuery }: HeroSectionProps) {
               <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">50+ restaurantes</p>
-              <p className="text-xs text-white/60">verificados</p>
+              <p className="text-sm font-semibold text-white">22 restaurantes</p>
+              <p className="text-xs text-white/60">en Ibagué</p>
             </div>
           </div>
 
@@ -77,7 +77,7 @@ export function HeroSection({ onSearch, searchQuery }: HeroSectionProps) {
               <Clock className="w-4 h-4 text-accent" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">20 min</p>
+              <p className="text-sm font-semibold text-white">25 min</p>
               <p className="text-xs text-white/60">entrega promedio</p>
             </div>
           </div>

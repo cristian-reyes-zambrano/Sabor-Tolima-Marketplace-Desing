@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import SellerOnboarding from './pages/SellerOnboarding';
 import SellerDashboard from './pages/SellerDashboard';
+import LogisticsMap from './pages/LogisticsMap';
 
 export const router = createBrowserRouter([
   // ── Public routes ──────────────────────────────────────────────────────────
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
   { path: '/login', Component: Login },
   { path: '/role-selection', Component: RoleSelection },
   { path: '/restaurant/:id', Component: RestaurantProfile },
+  { path: '/logistics', Component: LogisticsMap },
 
   // ── Customer routes (require auth) ─────────────────────────────────────────
   { path: '/cart', Component: Cart },
