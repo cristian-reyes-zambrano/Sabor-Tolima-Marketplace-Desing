@@ -1,20 +1,21 @@
 /**
- * SafeImage — Imagen con fallback automático a placeholder local
+ * SafeImage — Imagen con cadena de fallback de 3 niveles:
+ *   1. src (foto local /images/restaurants/rest-N.jpg)
+ *   2. fallbackSrc (URL de Unsplash de referencia)
+ *   3. placeholder SVG local
  *
- * Detecta errores de carga (imagen rota, URL externa caída, CORS)
- * y reemplaza automáticamente por un placeholder local en public/images/.
+ * Uso básico:
+ *   <SafeImage src="/images/restaurants/rest-1.jpg" alt="..." type="restaurant" />
  *
- * Uso:
- *   <SafeImage src={url} alt="nombre" type="restaurant" className="..." />
- *
- * Tipos de placeholder:
- *   "restaurant" → /images/restaurants/restaurant-placeholder.svg
- *   "product"    → /images/products/product-placeholder.svg
- *   "user"       → /images/users/user-placeholder.svg
+ * Con fallback de Unsplash:
+ *   <SafeImage
+ *     src={getRestaurantImage(id)}
+ *     fallbackSrc={getRestaurantFallback(id)}
+ *     alt="..." type="restaurant"
+ *   />
  */
 import { useState, useCallback } from 'react';
 
-// ─── Placeholders locales (servidos desde public/) ───────────────────────────
 export const PLACEHOLDERS = {
   restaurant: '/images/restaurants/restaurant-placeholder.svg',
   product:    '/images/products/product-placeholder.svg',
@@ -23,37 +24,43 @@ export const PLACEHOLDERS = {
 
 export type PlaceholderType = keyof typeof PLACEHOLDERS;
 
-// ─── Props ────────────────────────────────────────────────────────────────────
 interface SafeImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src?: string | null;
   alt: string;
-  /** Qué placeholder usar si la imagen falla. Default: "restaurant" */
   type?: PlaceholderType;
-  /** Clases CSS para el contenedor wrapper (solo si wrapperClassName está definido) */
+  /** URL de segundo fallback (ej: Unsplash) antes del placeholder SVG */
+  fallbackSrc?: string;
   wrapperClassName?: string;
 }
 
-// ─── Componente ───────────────────────────────────────────────────────────────
 export function SafeImage({
   src,
   alt,
   type = 'restaurant',
+  fallbackSrc,
   className,
   wrapperClassName,
   ...rest
 }: SafeImageProps) {
   const placeholder = PLACEHOLDERS[type];
-  const [imgSrc, setImgSrc] = useState<string>(
-    src && src.trim() !== '' ? src : placeholder
-  );
-  const [didError, setDidError] = useState(false);
+
+  const initial = src && src.trim() !== '' ? src : (fallbackSrc ?? placeholder);
+  const [imgSrc, setImgSrc] = useState<string>(initial);
+  const [errorCount, setErrorCount] = useState(0);
 
   const handleError = useCallback(() => {
-    if (!didError) {
-      setDidError(true);
-      setImgSrc(placeholder);
-    }
-  }, [didError, placeholder]);
+    setErrorCount(prev => {
+      const next = prev + 1;
+      if (next === 1 && fallbackSrc && imgSrc !== fallbackSrc) {
+        // Primer error: intentar Unsplash
+        setImgSrc(fallbackSrc);
+      } else if (next >= 2 || !fallbackSrc) {
+        // Segundo error o sin fallback: usar placeholder SVG
+        setImgSrc(placeholder);
+      }
+      return next;
+    });
+  }, [fallbackSrc, placeholder, imgSrc]);
 
   const img = (
     <img
@@ -68,28 +75,19 @@ export function SafeImage({
   if (wrapperClassName) {
     return <div className={wrapperClassName}>{img}</div>;
   }
-
   return img;
 }
 
-// ─── Variante circular para avatares ─────────────────────────────────────────
+// ─── AvatarImage ──────────────────────────────────────────────────────────────
 interface AvatarImageProps {
   src?: string | null;
   alt: string;
-  /** Tamaño en px. Default: 36 */
   size?: number;
   className?: string;
-  /** Inicial de fallback cuando no hay imagen (se muestra antes del error) */
   initial?: string;
   initialClassName?: string;
 }
 
-/**
- * AvatarImage — Avatar circular con fallback a inicial o placeholder.
- * Si hay `src` → intenta cargar la imagen.
- * Si falla o no hay `src` y hay `initial` → muestra la inicial.
- * Si no hay nada → muestra el placeholder de usuario.
- */
 export function AvatarImage({
   src,
   alt,
@@ -107,7 +105,6 @@ export function AvatarImage({
     minHeight: size,
   };
 
-  // Sin src o con error → mostrar inicial o placeholder
   if (!src || imgError) {
     if (initial) {
       return (
@@ -121,7 +118,6 @@ export function AvatarImage({
         </div>
       );
     }
-
     return (
       <img
         src={PLACEHOLDERS.user}

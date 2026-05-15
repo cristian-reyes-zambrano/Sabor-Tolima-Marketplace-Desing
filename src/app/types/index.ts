@@ -84,6 +84,8 @@ export interface Restaurant {
   id: string;
   name: string;
   image: string;
+  /** URL de fallback (Unsplash) si la imagen local no existe */
+  imageFallback?: string;
   bannerImage: string;
   rating: number;
   reviewCount: number;

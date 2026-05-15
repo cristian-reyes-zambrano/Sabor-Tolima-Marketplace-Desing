@@ -12,6 +12,7 @@ type RestaurantCardProps = Pick<
   | 'id'
   | 'name'
   | 'image'
+  | 'imageFallback'
   | 'rating'
   | 'reviewCount'
   | 'distance'
@@ -27,6 +28,7 @@ export function RestaurantCard({
   id,
   name,
   image,
+  imageFallback,
   rating,
   reviewCount,
   distance,
@@ -59,6 +61,7 @@ export function RestaurantCard({
       <div className="relative h-48 overflow-hidden bg-muted">
         <SafeImage
           src={image}
+          fallbackSrc={imageFallback}
           alt={name}
           type="restaurant"
           loading="lazy"

@@ -1,0 +1,33 @@
+CÓMO AGREGAR FOTOS DE RESTAURANTES
+====================================
+
+Coloca aquí tus fotos JPG con estos nombres exactos:
+
+  rest-1.jpg   → Lechonería La Tradición Ibagueña
+  rest-2.jpg   → Tamales Don José – La Pola
+  rest-3.jpg   → Comidas Caseras Doña Ana – El Salado
+  rest-4.jpg   → Achiras y Dulces de Belén
+  rest-5.jpg   → Asados El Tolimense – La Pola
+  rest-6.jpg   → Pizzería Cádiz – Ibagué
+  rest-7.jpg   → Pollos El Jordán – Ibagué
+  rest-8.jpg   → Perros & Más – Picaleña
+  rest-9.jpg   → Ensaladas Frescas Ambalá
+  rest-10.jpg  → Frutas y Jugos Mirolindo
+  rest-11.jpg  → Cocina Fit Piedra Pintada
+  rest-12.jpg  → Bar de Jugos El Centro
+  rest-13.jpg  → Café Musical de Ibagué
+  rest-14.jpg  → Panadería La Pola – Ibagué
+  rest-15.jpg  → Dulcería Doña Carmen – Jordán
+  rest-16.jpg  → Avena y Masato Don Rodrigo
+  rest-17.jpg  → El Tolimense Gourmet – Ambalá
+  rest-18.jpg  → Restaurante La Casona – Centro
+  rest-19.jpg  → Parrilla El Cádiz – Ibagué
+  rest-20.jpg  → Asadero Don Hernando – Picaleña
+  rest-21.jpg  → Menú del Día – Mercado La 21
+  rest-22.jpg  → Combos Rápidos El Salado
+
+TAMAÑO RECOMENDADO: 600x400px, menos de 500KB por foto
+FORMATOS: JPG, PNG o WEBP
+
+Mientras no tengas la foto, el sistema muestra automáticamente
+una foto de referencia de Unsplash específica para cada restaurante.

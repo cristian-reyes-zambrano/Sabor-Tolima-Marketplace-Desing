@@ -243,6 +243,7 @@ export default function RestaurantProfile() {
       <div className="relative h-56 sm:h-72 overflow-hidden">
         <SafeImage
           src={restaurant.bannerImage}
+          fallbackSrc={restaurant.imageFallback}
           alt={restaurant.name}
           type="restaurant"
           className="w-full h-full object-cover"
