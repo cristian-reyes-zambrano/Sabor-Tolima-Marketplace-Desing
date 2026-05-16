@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate } from 'react-router';
 import {
   Search,
   ShoppingCart,
@@ -59,8 +59,6 @@ export function Navbar() {
     toast.success('Sesión cerrada correctamente');
     navigate('/');
   };
-
-  const isHome = location.pathname === '/';
 
   return (
     <>

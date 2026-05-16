@@ -119,8 +119,6 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             ...(result.isNewUser ? { pendingGoogleUser: null } : {}),
           });
-
-          console.log('[Store] Google popup exitoso:', result.user.name);
           return result;
         } catch (err) {
           set({ isLoading: false });
@@ -138,8 +136,6 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             ...(result.isNewUser ? { pendingGoogleUser: result.firebaseUser } : {}),
           });
-
-          console.log('[Store] Google redirect exitoso:', result.user.name);
           return { isNewUser: result.isNewUser };
         } catch (err) {
           console.error('[Store] Error en handleGoogleRedirectResult:', err);

@@ -2,10 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import {
   LayoutDashboard, Package, ShoppingBag, Settings, LogOut,
-  TrendingUp, DollarSign, Star, Clock, Plus, Edit2, Trash2,
-  ToggleLeft, ToggleRight, Loader2, AlertCircle, CheckCircle2,
-  XCircle, ChevronDown, Menu, X, Upload, ImagePlus, Flame,
-  Eye, EyeOff, BarChart2, Tag, RefreshCw, Bell, Camera,
+  DollarSign, Star, Clock, Plus, Edit2, Trash2,
+  Loader2, AlertCircle, CheckCircle2,
+  XCircle, Menu, X, Upload, ImagePlus, Flame,
+  Eye, EyeOff, BarChart2, Tag, RefreshCw, Camera,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';

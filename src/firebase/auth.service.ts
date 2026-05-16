@@ -52,12 +52,9 @@ export function onAuthStateChange(
 
   return onAuthStateChanged(auth, async (firebaseUser) => {
     if (!firebaseUser) {
-      console.log('[Auth] Sin sesión activa');
       callback(null);
       return;
     }
-
-    console.log('[Auth] Sesión detectada:', firebaseUser.email);
 
     // Construir usuario mínimo desde Firebase Auth (siempre disponible, sin red)
     const authUser: AppUser = {
@@ -80,14 +77,12 @@ export function onAuthStateChange(
       const userData = await getUserDocument(firebaseUser.uid);
 
       if (userData) {
-        console.log('[Auth] Usuario enriquecido desde Firestore:', userData.name);
         callback(userData);
         return;
       }
 
       // Sin documento en Firestore: crear uno con los datos de Auth
       await createUserDocument(authUser);
-      console.log('[Auth] Documento creado automáticamente para:', authUser.name);
       // authUser ya fue emitido arriba, no hace falta volver a llamar callback
     } catch (err) {
       // Firestore offline o error de red — no pasa nada, ya emitimos authUser arriba
@@ -130,10 +125,8 @@ export async function loginWithGooglePopupOrRedirect(): Promise<{
   }
 
   try {
-    console.log('[Auth] Intentando popup de Google...');
     const result: UserCredential = await signInWithPopup(auth, googleProvider);
     const firebaseUser = result.user;
-    console.log('[Auth] Popup exitoso:', firebaseUser.email);
 
     const existing = await getUserDocument(firebaseUser.uid);
 
@@ -155,7 +148,6 @@ export async function loginWithGooglePopupOrRedirect(): Promise<{
     };
 
     await createUserDocument(newUser);
-    console.log('[Auth] Nuevo usuario Google guardado:', newUser.name);
     return { user: newUser, isNewUser: true };
 
   } catch (err: unknown) {
@@ -190,21 +182,17 @@ export async function checkRedirectResult(): Promise<{
   if (!isFirebaseConfigured()) return null;
 
   try {
-    console.log('[Auth] Verificando resultado de redirect...');
     const result: UserCredential | null = await getRedirectResult(auth);
 
     if (!result) {
-      console.log('[Auth] Sin resultado de redirect pendiente');
       return null;
     }
 
     const firebaseUser = result.user;
-    console.log('[Auth] Redirect exitoso:', firebaseUser.email, firebaseUser.displayName);
 
     const existing = await getUserDocument(firebaseUser.uid);
 
     if (existing) {
-      console.log('[Auth] Usuario existente en Firestore:', existing.name);
       return { user: existing, isNewUser: false, firebaseUser };
     }
 
@@ -246,7 +234,6 @@ export async function completeGoogleRegistration(
   };
 
   await createUserDocument(appUser);
-  console.log('[Auth] Registro Google completado con rol:', role);
   return appUser;
 }
 
@@ -272,7 +259,6 @@ export async function registerWithEmail(
   };
 
   await createUserDocument(appUser);
-  console.log('[Auth] Registro con email exitoso:', email);
   return appUser;
 }
 
@@ -287,7 +273,6 @@ export async function loginWithEmail(
   const userData = await getUserDocument(credential.user.uid);
 
   if (!userData) throw new Error('Usuario no encontrado en la base de datos');
-  console.log('[Auth] Login con email exitoso:', email);
   return userData;
 }
 
@@ -295,7 +280,6 @@ export async function loginWithEmail(
 export async function logoutUser(): Promise<void> {
   if (!isFirebaseConfigured()) return;
   await signOut(auth);
-  console.log('[Auth] Sesión cerrada');
 }
 
 // ─── Password Reset ───────────────────────────────────────────────────────────
@@ -305,7 +289,6 @@ export async function resetPassword(email: string): Promise<void> {
     return;
   }
   await sendPasswordResetEmail(auth, email);
-  console.log('[Auth] Email de recuperación enviado a:', email);
 }
 
 // ─── Helpers internos ─────────────────────────────────────────────────────────

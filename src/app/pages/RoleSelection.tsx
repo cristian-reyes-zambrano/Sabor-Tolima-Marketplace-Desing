@@ -1,14 +1,8 @@
 import { useNavigate } from 'react-router';
 import {
-  ShoppingBag,
-  Store,
-  ChefHat,
-  ArrowRight,
-  UtensilsCrossed,
-  ShieldCheck,
-  Sparkles,
+  ShoppingBag, Store, ChefHat, ArrowRight,
+  UtensilsCrossed, ShieldCheck, Sparkles,
 } from 'lucide-react';
-
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 
@@ -16,12 +10,10 @@ export default function RoleSelection() {
   const navigate = useNavigate();
 
   const handleRoleSelect = (role: 'buyer' | 'seller') => {
-    localStorage.setItem('userRole', role);
-
     if (role === 'buyer') {
       navigate('/');
     } else {
-      navigate('/vendor-dashboard');
+      navigate('/seller-onboarding');
     }
   };
 

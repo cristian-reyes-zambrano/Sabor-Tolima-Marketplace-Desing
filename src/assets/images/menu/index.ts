@@ -1,117 +1,104 @@
 /**
- * Imágenes locales del menú - Sabor Tolima Marketplace
- * ─────────────────────────────────────────────────────────────────────────────
+ * Imágenes locales de platos — Sabor Tolima Marketplace
  *
- * CÓMO AGREGAR TUS PROPIAS FOTOS:
+ * CÓMO AGREGAR FOTO DE UN PLATO:
+ *   1. Pon tu JPG en la carpeta del restaurante:
+ *        src/assets/images/menu/restaurante-1/lechona.jpg
+ *   2. Importa aquí (descomenta la línea):
+ *        import lechonaImg from './restaurante-1/lechona.jpg';
+ *   3. Agrega al mapa MENU_IMAGES con el ID del plato:
+ *        'm1-1': lechonaImg,
  *
- * 1. Pon tu imagen JPG/PNG/WEBP en la carpeta correspondiente:
- *    src/assets/images/menu/restaurante-1/lechona.jpg
- *    src/assets/images/menu/restaurante-1/tamal.jpg
- *    src/assets/images/menu/restaurante-general/placeholder.jpg
+ * ESTRUCTURA:
+ *   restaurante-1/   → Lechonería La Tradición Ibagueña
+ *   restaurante-2/   → Tamales Don José – La Pola
+ *   restaurante-5/   → Asados El Tolimense – La Pola
+ *   restaurante-9/   → Ensaladas Frescas Ambalá
+ *   restaurante-13/  → Café Musical de Ibagué
+ *   restaurante-17/  → El Tolimense Gourmet – Ambalá
+ *   restaurante-general/ → Fotos genéricas de respaldo
  *
- * 2. Importa la imagen aquí abajo (descomenta o agrega la línea):
- *    import lechonaImg from './restaurante-1/lechona.jpg';
- *
- * 3. Agrégala al objeto MENU_IMAGES con el ID del plato:
- *    'm1-1': lechonaImg,
- *
- * 4. En src/app/data/menu.ts el campo `image` del plato se reemplaza
- *    automáticamente con tu foto local.
- *
- * ─── ESTRUCTURA DE CARPETAS ──────────────────────────────────────────────────
- *
- *  src/assets/images/menu/
- *  ├── restaurante-1/     ← Lechona Tradicional Tolima
- *  │   ├── lechona.jpg
- *  │   ├── tamal.jpg
- *  │   └── avena.jpg
- *  ├── restaurante-2/     ← Tamalería San Alejo
- *  ├── restaurante-5/     ← Burgers & Wings
- *  ├── restaurante-9/     ← Green Bowl Salads
- *  ├── restaurante-13/    ← Café del Centro
- *  ├── restaurante-17/    ← Sushi Master Premium
- *  └── restaurante-general/  ← Imágenes genéricas de respaldo
- *
- * ─── FORMATOS SOPORTADOS ─────────────────────────────────────────────────────
- *  .jpg  .jpeg  .png  .webp  .avif
- *  Tamaño recomendado: 400×300px mínimo, menos de 500KB por imagen
- *
- * ─────────────────────────────────────────────────────────────────────────────
+ * FORMATOS: .jpg .jpeg .png .webp · Tamaño recomendado: 400×300px · Máx 500KB
  */
 
-// ── Importa aquí tus imágenes locales ────────────────────────────────────────
-// Descomenta y ajusta la ruta cuando agregues una foto:
+// ── Descomenta e importa tus fotos locales aquí ──────────────────────────────
 
-// import lechonaCompleta   from './restaurante-1/lechona-completa.jpg';
-// import mediaLechona      from './restaurante-1/media-lechona.jpg';
-// import tamalTolimense    from './restaurante-1/tamal.jpg';
-// import avenaTolimense    from './restaurante-1/avena.jpg';
-// import achiras           from './restaurante-1/achiras.jpg';
-// import comboLechona      from './restaurante-1/combo-familiar.jpg';
-// import sancocho          from './restaurante-1/sancocho.jpg';
+// Restaurante 1 — Lechonería La Tradición Ibagueña
+// import lechonaCompleta from './restaurante-1/lechona-completa.jpg';
+// import mediaLechona    from './restaurante-1/media-lechona.jpg';
+// import tamalR1         from './restaurante-1/tamal.jpg';
+// import avenaR1         from './restaurante-1/avena.jpg';
+// import achirasR1       from './restaurante-1/achiras.jpg';
+// import comboLechona    from './restaurante-1/combo-familiar.jpg';
+// import sancochoCostilla from './restaurante-1/sancocho.jpg';
 
-// import tamalSanAlejo     from './restaurante-2/tamal-clasico.jpg';
-// import tamalPipian       from './restaurante-2/tamal-pipian.jpg';
-// import arepaCon Queso    from './restaurante-2/arepa-queso.jpg';
+// Restaurante 2 — Tamales Don José – La Pola
+// import tamalClasico    from './restaurante-2/tamal-clasico.jpg';
+// import tamalPipian     from './restaurante-2/tamal-pipian.jpg';
+// import arepaCon Queso  from './restaurante-2/arepa-queso.jpg';
+// import avenaFria       from './restaurante-2/avena-fria.jpg';
 
-// import burgerClasica     from './restaurante-5/burger-clasica.jpg';
-// import burgerBBQ         from './restaurante-5/burger-bbq.jpg';
-// import wingsBuffalo      from './restaurante-5/wings-buffalo.jpg';
+// Restaurante 5 — Asados El Tolimense – La Pola
+// import chorizoParrilla from './restaurante-5/chorizo.jpg';
+// import costillasBBQ    from './restaurante-5/costillas.jpg';
+// import morcillaLonganiza from './restaurante-5/morcilla.jpg';
 
-// import buddahBowl        from './restaurante-9/buddha-bowl.jpg';
-// import ensaladaCesar     from './restaurante-9/ensalada-cesar.jpg';
+// Restaurante 9 — Ensaladas Frescas Ambalá
+// import bowlProteico    from './restaurante-9/bowl-proteico.jpg';
+// import ensaladaFrutas  from './restaurante-9/ensalada-frutas.jpg';
+// import jugoVerde       from './restaurante-9/jugo-verde.jpg';
 
-// import cafeEspresso      from './restaurante-13/espresso.jpg';
-// import cappuccino        from './restaurante-13/cappuccino.jpg';
-// import cheesecake        from './restaurante-13/cheesecake.jpg';
+// Restaurante 13 — Café Musical de Ibagué
+// import cafeEspresso    from './restaurante-13/espresso.jpg';
+// import cafeLecheCafe   from './restaurante-13/cafe-leche.jpg';
+// import almojabana      from './restaurante-13/almojabana.jpg';
+// import tortaNovia      from './restaurante-13/torta-novia.jpg';
 
-// import salmonRoll        from './restaurante-17/salmon-roll.jpg';
-// import dragonRoll        from './restaurante-17/dragon-roll.jpg';
+// Restaurante 17 — El Tolimense Gourmet – Ambalá
+// import lechonaGourmet  from './restaurante-17/lechona-gourmet.jpg';
+// import tamalGourmet    from './restaurante-17/tamal-gourmet.jpg';
+// import cevicheCachama  from './restaurante-17/ceviche.jpg';
 
 // ── Mapa de imágenes por ID de plato ─────────────────────────────────────────
-// La clave es el `id` del plato en src/app/data/menu.ts
-// El valor es la imagen importada arriba
-
 export const MENU_IMAGES: Record<string, string> = {
-  // Restaurante 1 — Lechona Tradicional Tolima
+  // Descomenta cuando tengas la foto local:
+
   // 'm1-1': lechonaCompleta,
   // 'm1-2': mediaLechona,
-  // 'm1-3': tamalTolimense,
-  // 'm1-4': avenaTolimense,
-  // 'm1-5': achiras,
+  // 'm1-3': tamalR1,
+  // 'm1-4': avenaR1,
+  // 'm1-5': achirasR1,
   // 'm1-6': comboLechona,
-  // 'm1-7': sancocho,
+  // 'm1-7': sancochoCostilla,
 
-  // Restaurante 2 — Tamalería San Alejo
-  // 'm2-1': tamalSanAlejo,
+  // 'm2-1': tamalClasico,
   // 'm2-2': tamalPipian,
+  // 'm2-4': avenaFria,
 
-  // Restaurante 5 — Burgers & Wings
-  // 'm5-1': burgerClasica,
-  // 'm5-2': burgerBBQ,
-  // 'm5-3': wingsBuffalo,
+  // 'm5-1': chorizoParrilla,
+  // 'm5-2': costillasBBQ,
+  // 'm5-3': morcillaLonganiza,
 
-  // Restaurante 9 — Green Bowl Salads
-  // 'm9-1': buddahBowl,
-  // 'm9-2': ensaladaCesar,
+  // 'm9-1': bowlProteico,
+  // 'm9-2': ensaladaFrutas,
+  // 'm9-3': jugoVerde,
 
-  // Restaurante 13 — Café del Centro
   // 'm13-1': cafeEspresso,
-  // 'm13-2': cappuccino,
-  // 'm13-4': cheesecake,
+  // 'm13-2': cafeLecheCafe,
+  // 'm13-3': almojabana,
+  // 'm13-4': tortaNovia,
 
-  // Restaurante 17 — Sushi Master Premium
-  // 'm17-1': salmonRoll,
-  // 'm17-2': dragonRoll,
+  // 'm17-1': lechonaGourmet,
+  // 'm17-2': tamalGourmet,
+  // 'm17-3': cevicheCachama,
 };
 
-/** Placeholder local para platos sin imagen */
-const LOCAL_FOOD_PLACEHOLDER = '/images/products/product-placeholder.svg';
+const PLACEHOLDER = '/images/products/product-placeholder.svg';
 
 /**
- * Obtiene la imagen de un plato.
- * Prioridad: imagen local → fallbackUrl externo → placeholder local
+ * Retorna la imagen de un plato.
+ * Prioridad: foto local → fallbackUrl (Unsplash) → placeholder SVG
  */
 export function getMenuImage(itemId: string, fallbackUrl?: string): string {
-  return MENU_IMAGES[itemId] ?? fallbackUrl ?? LOCAL_FOOD_PLACEHOLDER;
+  return MENU_IMAGES[itemId] ?? fallbackUrl ?? PLACEHOLDER;
 }

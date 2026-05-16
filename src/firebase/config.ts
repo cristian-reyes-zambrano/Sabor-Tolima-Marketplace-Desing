@@ -35,7 +35,6 @@ export default app;
 export async function configurePersistence(): Promise<void> {
   try {
     await setPersistence(auth, browserLocalPersistence);
-    console.log('[Firebase] Persistencia configurada: browserLocalPersistence');
   } catch (err) {
     console.warn('[Firebase] No se pudo configurar persistencia:', err);
   }
