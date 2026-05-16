@@ -5,7 +5,7 @@ import {
   TrendingUp, DollarSign, Star, Clock, Plus, Edit2, Trash2,
   ToggleLeft, ToggleRight, Loader2, AlertCircle, CheckCircle2,
   XCircle, ChevronDown, Menu, X, Upload, ImagePlus, Flame,
-  Eye, EyeOff, BarChart2, Tag, RefreshCw, Bell,
+  Eye, EyeOff, BarChart2, Tag, RefreshCw, Bell, Camera,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -26,7 +26,7 @@ import {
 import { toast } from 'sonner';
 import type { SellerProduct, MenuCategory, SellerStatus, AppOrder } from '../types';
 
-type DashTab = 'overview' | 'products' | 'orders' | 'stats' | 'promos' | 'settings';
+type DashTab = 'overview' | 'products' | 'orders' | 'stats' | 'promos' | 'photos' | 'settings';
 
 const MENU_CATEGORIES: { id: MenuCategory; label: string }[] = [
   { id: 'principales', label: 'Platos Fuertes' },
@@ -139,6 +139,7 @@ export default function SellerDashboard() {
     { id: 'overview',  label: 'Resumen',       icon: LayoutDashboard },
     { id: 'products',  label: 'Productos',      icon: Package },
     { id: 'orders',    label: 'Pedidos',        icon: ShoppingBag },
+    { id: 'photos',    label: 'Fotos',          icon: Camera },
     { id: 'stats',     label: 'Estadísticas',   icon: BarChart2 },
     { id: 'promos',    label: 'Promociones',    icon: Tag },
     { id: 'settings',  label: 'Configuración',  icon: Settings },
@@ -304,6 +305,7 @@ export default function SellerDashboard() {
             />
           )}
           {activeTab === 'stats'    && <StatsTab products={products} orders={orders} />}
+          {activeTab === 'photos'   && <PhotosTab restaurantId={user.id} profile={profile} />}
           {activeTab === 'promos'   && <PromosTab products={products} />}
           {activeTab === 'settings' && <SettingsTab profile={profile} onSave={updateProfile} />}
         </main>
@@ -1143,6 +1145,271 @@ function PromosTab({ products }: { products: SellerProduct[] }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Tab: Photos ──────────────────────────────────────────────────────────────
+function PhotosTab({
+  restaurantId,
+  profile,
+}: {
+  restaurantId: string;
+  profile: ReturnType<typeof useSellerStore.getState>['profile'];
+}) {
+  const { updateProfile } = useSellerStore();
+  const { user } = useAuthStore();
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<{
+    logo?: string;
+    banner?: string;
+    gallery: string[];
+  }>({
+    logo:    profile?.logo    ?? '',
+    banner:  profile?.banner  ?? '',
+    gallery: profile?.images  ?? [],
+  });
+
+  const handleUpload = async (
+    file: File,
+    type: 'logo' | 'banner' | 'gallery'
+  ) => {
+    const err = validateImageFile(file);
+    if (err) { toast.error(err); return; }
+    if (!user) return;
+
+    setUploading(type);
+    try {
+      const url = await uploadFile(file, type === 'gallery' ? 'gallery' : type, user.id);
+
+      if (type === 'logo') {
+        await updateProfile({ logo: url });
+        setPreviews(p => ({ ...p, logo: url }));
+        toast.success('Logo actualizado');
+      } else if (type === 'banner') {
+        await updateProfile({ banner: url });
+        setPreviews(p => ({ ...p, banner: url }));
+        toast.success('Banner actualizado');
+      } else {
+        const newGallery = [...(previews.gallery ?? []), url];
+        await updateProfile({ images: newGallery });
+        setPreviews(p => ({ ...p, gallery: newGallery }));
+        toast.success('Foto agregada a la galería');
+      }
+    } catch {
+      toast.error('Error al subir la imagen. Intenta de nuevo.');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const handleRemoveGallery = async (url: string) => {
+    const newGallery = previews.gallery.filter(u => u !== url);
+    await updateProfile({ images: newGallery });
+    setPreviews(p => ({ ...p, gallery: newGallery }));
+    toast.success('Foto eliminada');
+  };
+
+  const UploadZone = ({
+    label, hint, current, type, aspect,
+  }: {
+    label: string; hint: string;
+    current?: string; type: 'logo' | 'banner' | 'gallery';
+    aspect: string;
+  }) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const isLoading = uploading === type;
+
+    return (
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-foreground">{label}</p>
+        {current ? (
+          <div className={`relative rounded-2xl overflow-hidden border border-border ${aspect}`}>
+            <img src={current} alt={label} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="bg-white text-foreground text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1.5"
+              >
+                <Upload className="w-3.5 h-3.5" /> Cambiar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={isLoading}
+            className={`w-full border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50 ${aspect}`}
+          >
+            {isLoading ? (
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            ) : (
+              <>
+                <ImagePlus className="w-6 h-6 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground font-medium">Subir {label}</span>
+                <span className="text-[10px] text-muted-foreground">{hint}</span>
+              </>
+            )}
+          </button>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={e => {
+            const f = e.target.files?.[0];
+            if (f) handleUpload(f, type);
+            e.target.value = '';
+          }}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* Info */}
+      <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl flex items-start gap-3">
+        <Camera className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-foreground">Fotos de tu restaurante</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Sube el logo, banner y galería de fotos. Se muestran automáticamente
+            en tu perfil público del marketplace.
+          </p>
+        </div>
+      </div>
+
+      {/* Logo */}
+      <Card className="border-0 shadow-sm rounded-2xl">
+        <CardContent className="p-5">
+          <h3 className="text-sm font-bold text-foreground mb-4">Logo del restaurante</h3>
+          <div className="flex items-start gap-6">
+            <UploadZone
+              label="Logo"
+              hint="JPG, PNG · Cuadrado · Máx 5MB"
+              current={previews.logo}
+              type="logo"
+              aspect="h-32 w-32"
+            />
+            <div className="flex-1 text-xs text-muted-foreground space-y-1.5 pt-2">
+              <p>• Tamaño recomendado: <strong>400×400px</strong></p>
+              <p>• Formato cuadrado</p>
+              <p>• Se muestra en la tarjeta del restaurante</p>
+              <p>• Máximo 5MB</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Banner */}
+      <Card className="border-0 shadow-sm rounded-2xl">
+        <CardContent className="p-5">
+          <h3 className="text-sm font-bold text-foreground mb-4">Banner del restaurante</h3>
+          <UploadZone
+            label="Banner"
+            hint="JPG, PNG · 1200×400px recomendado · Máx 5MB"
+            current={previews.banner}
+            type="banner"
+            aspect="h-40"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Se muestra en la parte superior del perfil de tu restaurante.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Galería */}
+      <Card className="border-0 shadow-sm rounded-2xl">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-foreground">
+              Galería de fotos ({previews.gallery.length}/8)
+            </h3>
+            {previews.gallery.length < 8 && (
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-primary cursor-pointer hover:text-primary/80 transition-colors">
+                <Plus className="w-4 h-4" />
+                Agregar foto
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUpload(f, 'gallery');
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
+          {previews.gallery.length === 0 ? (
+            <label className="w-full h-32 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer">
+              {uploading === 'gallery' ? (
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              ) : (
+                <>
+                  <Camera className="w-6 h-6 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Sube fotos de tus platos, local o ambiente
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">JPG, PNG · Máx 5MB por foto</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) handleUpload(f, 'gallery');
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {previews.gallery.map((url, i) => (
+                <div key={i} className="relative aspect-square rounded-xl overflow-hidden group border border-border">
+                  <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      onClick={() => handleRemoveGallery(url)}
+                      className="w-8 h-8 bg-destructive text-white rounded-full flex items-center justify-center shadow-md"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {previews.gallery.length < 8 && (
+                <label className="aspect-square rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all">
+                  {uploading === 'gallery' ? (
+                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="w-5 h-5 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground">Agregar</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) handleUpload(f, 'gallery');
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

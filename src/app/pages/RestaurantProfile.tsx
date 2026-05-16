@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, Star, Clock, MapPin, BadgeCheck, Heart, Share2,
@@ -18,8 +18,9 @@ import { SafeImage } from '../components/SafeImage';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { AuthModal } from '../components/auth/AuthModal';
+import { getSellerProfile } from '../../firebase/firestore.service';
 import { toast } from 'sonner';
-import type { MenuItem, MenuCategory } from '../types';
+import type { MenuItem, MenuCategory, SellerProfile } from '../types';
 
 const MENU_CATEGORIES: { id: MenuCategory; label: string; emoji: string }[] = [  { id: 'recomendados', label: 'Recomendados', emoji: '⭐' },
   { id: 'combos', label: 'Combos', emoji: '🎁' },
@@ -184,6 +185,7 @@ export default function RestaurantProfile() {
   const { id } = useParams<{ id: string }>();
   const [selectedTab, setSelectedTab] = useState('menu');
   const [showAuth, setShowAuth] = useState(false);
+  const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
 
   const restaurant = useMemo(() => getRestaurantById(id ?? ''), [id]);
   const menuItems = useMemo(() => getMenuByRestaurant(id ?? ''), [id]);
@@ -192,6 +194,18 @@ export default function RestaurantProfile() {
   const { isAuthenticated } = useAuthStore();
   const totalItems = useCartStore((s) => s.totalItems());
   const isFav = isRestaurantFavorite(id ?? '');
+
+  // Cargar perfil del vendedor para obtener fotos reales subidas
+  useEffect(() => {
+    if (id) {
+      getSellerProfile(id).then(p => setSellerProfile(p)).catch(() => {});
+    }
+  }, [id]);
+
+  // Fotos reales del vendedor (si las subió) o placeholder
+  const restaurantImage  = sellerProfile?.logo   || sellerProfile?.banner || restaurant?.image   || '';
+  const restaurantBanner = sellerProfile?.banner  || sellerProfile?.logo   || restaurant?.bannerImage || '';
+  const galleryImages    = sellerProfile?.images  ?? [];
 
   if (!restaurant) {
     return (
@@ -242,7 +256,7 @@ export default function RestaurantProfile() {
       {/* Banner */}
       <div className="relative h-56 sm:h-72 overflow-hidden">
         <SafeImage
-          src={restaurant.bannerImage}
+          src={restaurantBanner}
           fallbackSrc={restaurant.imageFallback}
           alt={restaurant.name}
           type="restaurant"
@@ -396,6 +410,11 @@ export default function RestaurantProfile() {
             <TabsTrigger value="menu" className="flex-1 rounded-xl text-sm font-medium">
               Menú
             </TabsTrigger>
+            {galleryImages.length > 0 && (
+              <TabsTrigger value="photos" className="flex-1 rounded-xl text-sm font-medium">
+                Fotos ({galleryImages.length})
+              </TabsTrigger>
+            )}
             <TabsTrigger value="reviews" className="flex-1 rounded-xl text-sm font-medium">
               Reseñas
             </TabsTrigger>
@@ -430,6 +449,24 @@ export default function RestaurantProfile() {
               );
             })}
           </TabsContent>
+
+          {/* PHOTOS TAB */}
+          {galleryImages.length > 0 && (
+            <TabsContent value="photos">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {galleryImages.map((url, i) => (
+                  <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-border">
+                    <img
+                      src={url}
+                      alt={`Foto ${i + 1} de ${restaurant.name}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          )}
 
           {/* REVIEWS TAB */}
           <TabsContent value="reviews" className="space-y-4">

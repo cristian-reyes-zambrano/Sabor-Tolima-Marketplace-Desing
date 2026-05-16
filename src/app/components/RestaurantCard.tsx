@@ -9,27 +9,13 @@ import type { Restaurant } from '../types';
 
 type RestaurantCardProps = Pick<
   Restaurant,
-  | 'id'
-  | 'name'
-  | 'image'
-  | 'imageFallback'
-  | 'rating'
-  | 'reviewCount'
-  | 'distance'
-  | 'estimatedTime'
-  | 'tags'
-  | 'verified'
-  | 'discount'
-  | 'deliveryFee'
-  | 'description'
+  | 'id' | 'name' | 'image' | 'imageFallback'
+  | 'rating' | 'reviewCount' | 'distance' | 'estimatedTime'
+  | 'tags' | 'verified' | 'discount' | 'deliveryFee' | 'description'
 >;
 
 export function RestaurantCard({
-  id,
-  name,
-  image,
-  imageFallback,
-  rating,
+  id, name, image, imageFallback, rating,
   reviewCount,
   distance,
   estimatedTime,
