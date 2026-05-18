@@ -170,26 +170,32 @@ export function getMenuByRestaurant(restaurantId: string): MenuItem[] {
 }
 
 function generateDefaultMenu(restaurantId: string): MenuItem[] {
+  const fallbackAlmuerzo = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop&q=80';
+  const fallbackSopa     = 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&h=300&fit=crop&q=80';
+  const fallbackJugo     = 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&h=300&fit=crop&q=80';
+  const fallbackPostre   = 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&h=300&fit=crop&q=80';
+  const fallbackCombo    = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop&q=80';
+
   return [
     { id:`${restaurantId}-d1`, restaurantId, name:'Almuerzo del Día',
       description:'Sopa + seco con arroz, frijoles y proteína del día. Ingredientes frescos de Ibagué.',
-      price:18000, image:getMenuImage(`${restaurantId}-d1`, IMG.almuerzo),
+      price:18000, image:getMenuImage(`${restaurantId}-d1`, fallbackAlmuerzo),
       category:'principales', isPopular:true, rating:4.5, available:true },
     { id:`${restaurantId}-d2`, restaurantId, name:'Sopa Criolla Ibagueña',
       description:'Sopa casera con papa criolla, yuca y verduras frescas del mercado local.',
-      price:12000, image:getMenuImage(`${restaurantId}-d2`, IMG.sopa),
+      price:12000, image:getMenuImage(`${restaurantId}-d2`, fallbackSopa),
       category:'entradas', rating:4.4, available:true },
     { id:`${restaurantId}-d3`, restaurantId, name:'Jugo de Fruta Tolimense',
       description:'Jugo natural de fruta de temporada del Tolima: cholupa, maracuyá o guanábana.',
-      price:5000, image:getMenuImage(`${restaurantId}-d3`, IMG.jugo),
+      price:5000, image:getMenuImage(`${restaurantId}-d3`, fallbackJugo),
       category:'bebidas', rating:4.5, available:true },
     { id:`${restaurantId}-d4`, restaurantId, name:'Postre Casero',
       description:'Natilla, manjar blanco o arroz con leche. Postre artesanal del día.',
-      price:8000, image:getMenuImage(`${restaurantId}-d4`, IMG.postre),
+      price:8000, image:getMenuImage(`${restaurantId}-d4`, fallbackPostre),
       category:'postres', rating:4.4, available:true },
     { id:`${restaurantId}-d5`, restaurantId, name:'Combo Almuerzo Completo',
       description:'Sopa + seco + jugo de fruta tolimense + postre del día.',
-      price:32000, image:getMenuImage(`${restaurantId}-d5`, IMG.combo),
+      price:32000, image:getMenuImage(`${restaurantId}-d5`, fallbackCombo),
       category:'combos', discount:10, rating:4.6, available:true },
   ];
 }
