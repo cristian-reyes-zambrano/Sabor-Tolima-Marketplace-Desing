@@ -1,7 +1,11 @@
-CÓMO AGREGAR FOTOS DE RESTAURANTES
-====================================
+CÓMO AGREGAR FOTOS — Sabor Tolima Marketplace
+==============================================
 
-Coloca aquí tus fotos JPG con estos nombres exactos:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ FOTO PRINCIPAL DEL RESTAURANTE (tarjeta + banner)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Coloca la foto directamente en esta carpeta con el nombre exacto:
 
   rest-1.jpg   → Lechonería La Tradición Ibagueña       (Centro Histórico)
   rest-2.jpg   → Tamales Don José – La Pola              (Barrio La Pola)
@@ -26,13 +30,71 @@ Coloca aquí tus fotos JPG con estos nombres exactos:
   rest-21.jpg  → Menú del Día – Mercado La 21            (Mercado La 21)
   rest-22.jpg  → Combos Rápidos El Salado                (Barrio El Salado)
 
-PASOS:
-  1. Copia tu foto JPG a esta carpeta
-  2. Renómbrala con el nombre exacto de arriba (ej: rest-1.jpg)
-  3. Listo — se muestra automáticamente sin cambiar código
+Esta foto aparece en:
+  ✓ Tarjeta del restaurante en el listado
+  ✓ Banner de la parte superior del perfil del restaurante
 
-TAMAÑO RECOMENDADO: 600x400px, menos de 500KB por foto
-FORMATOS ACEPTADOS: .jpg  .jpeg  .png  .webp
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ FOTOS DE PLATOS (menú de cada restaurante)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-NOTA: Mientras no tengas la foto, el sistema muestra automáticamente
-una imagen de referencia de Unsplash específica para cada restaurante.
+Cada restaurante tiene su propia subcarpeta:
+
+  rest-1\   → Fotos de platos de Lechonería La Tradición
+  rest-2\   → Fotos de platos de Tamales Don José
+  rest-3\   → Fotos de platos de Doña Ana
+  ... (hasta rest-22\)
+
+CÓMO AGREGAR UNA FOTO DE PLATO:
+  1. Pon tu foto en la subcarpeta del restaurante
+     Ejemplo: rest-2\tamal-clasico.jpg
+  2. Abre: src/assets/images/menu/index.ts
+  3. Importa la imagen (descomenta la línea correspondiente)
+  4. Agrégala al mapa MENU_IMAGES con el ID del plato
+
+IDs de platos por restaurante:
+  Restaurante 1:  m1-1 (Lechona Completa), m1-2 (Media Lechona),
+                  m1-3 (Tamal), m1-4 (Avena), m1-5 (Achiras),
+                  m1-6 (Combo Familiar), m1-7 (Sancocho)
+
+  Restaurante 2:  m2-1 (Tamal Clásico), m2-2 (Tamal Pipián),
+                  m2-3 (Arepa con Queso), m2-4 (Avena Fría),
+                  m2-5 (Combo Desayuno), m2-6 (Docena Tamales)
+
+  Restaurante 3:  m3-1 (Sancocho Gallina), m3-2 (Mondongo),
+                  m3-3 (Almuerzo Casero), m3-4 (Jugo Cholupa),
+                  m3-5 (Natilla)
+
+  Restaurante 5:  m5-1 (Chorizo Parrilla), m5-2 (Costillas BBQ),
+                  m5-3 (Morcilla y Longaniza), m5-4 (Papa Criolla),
+                  m5-5 (Limonada Panela), m5-6 (Parrillada Familiar),
+                  m5-7 (Postre Guanábana)
+
+  Restaurante 9:  m9-1 (Bowl Proteico), m9-2 (Ensalada Frutas),
+                  m9-3 (Jugo Verde), m9-4 (Wrap Vegano),
+                  m9-5 (Combo Fit), m9-6 (Granola)
+
+  Restaurante 13: m13-1 (Café Espresso), m13-2 (Café con Leche),
+                  m13-3 (Almojábana), m13-4 (Torta Novia),
+                  m13-5 (Combo Desayuno), m13-6 (Pandeyuca)
+
+  Restaurante 17: m17-1 (Lechona Gourmet), m17-2 (Tamal Gourmet),
+                  m17-3 (Ceviche Cachama), m17-4 (Coctel Cholupa),
+                  m17-5 (Postre Guanábana), m17-6 (Menú Degustación)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ESPECIFICACIONES TÉCNICAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Foto principal del restaurante:
+  Tamaño recomendado: 600×400px
+  Máximo: 500KB
+
+Foto de plato:
+  Tamaño recomendado: 400×300px
+  Máximo: 300KB
+
+Formatos aceptados: .jpg  .jpeg  .png  .webp
+
+NOTA: Si no hay foto, el sistema muestra automáticamente
+una imagen de referencia de Unsplash para ese restaurante/plato.

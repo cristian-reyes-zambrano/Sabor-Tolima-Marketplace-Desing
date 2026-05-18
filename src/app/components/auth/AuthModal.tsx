@@ -65,7 +65,7 @@ export function AuthModal({
   };
 
   // ── Login con email ─────────────────────────────────────────────────────────
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validate(false)) return;
     try {
@@ -79,7 +79,7 @@ export function AuthModal({
   };
 
   // ── Registro con email ──────────────────────────────────────────────────────
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validate(true)) return;
     try {

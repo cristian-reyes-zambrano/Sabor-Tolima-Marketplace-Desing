@@ -1470,7 +1470,7 @@ function ProductModal({
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error('El nombre es requerido'); return; }
     if (form.price <= 0) { toast.error('El precio debe ser mayor a 0'); return; }

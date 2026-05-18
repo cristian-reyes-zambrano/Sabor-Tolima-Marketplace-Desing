@@ -39,7 +39,7 @@ export function Navbar() {
   const totalItems = useCartStore((s) => s.totalItems());
   const totalFavorites = useFavoritesStore((s) => s.restaurantIds.length);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/?q=${encodeURIComponent(searchQuery)}`);

@@ -202,9 +202,10 @@ export default function RestaurantProfile() {
     }
   }, [id]);
 
-  // Fotos reales del vendedor (si las subió) o placeholder
-  const restaurantImage  = sellerProfile?.logo   || sellerProfile?.banner || restaurant?.image   || '';
-  const restaurantBanner = sellerProfile?.banner  || sellerProfile?.logo   || restaurant?.bannerImage || '';
+  // Fotos reales del vendedor (si las subió) o la foto de la tarjeta del restaurante
+  const restaurantImage  = sellerProfile?.logo   || sellerProfile?.banner || restaurant?.image || '';
+  // Banner: usa la foto subida por el vendedor, o si no, la misma foto de la tarjeta (rest-N.jpg)
+  const restaurantBanner = sellerProfile?.banner  || sellerProfile?.logo   || restaurant?.image || '';
   const galleryImages    = sellerProfile?.images  ?? [];
 
   if (!restaurant) {
