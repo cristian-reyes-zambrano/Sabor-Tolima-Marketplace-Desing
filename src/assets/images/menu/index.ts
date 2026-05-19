@@ -22,19 +22,19 @@ export const MENU_IMAGES: Record<string, string> = {
   // 'm1-7': '/images/restaurants/rest-1/sancocho.jpg',
 
   // ── Restaurante 2 — Tamales Don José ─────────────────────────────────────
-  // 'm2-1': '/images/restaurants/rest-2/tamal-clasico.jpg',
-  // 'm2-2': '/images/restaurants/rest-2/tamal-pipian.jpg',
-  // 'm2-3': '/images/restaurants/rest-2/arepa-queso.jpg',
-  // 'm2-4': '/images/restaurants/rest-2/avena-fria.jpg',
-  // 'm2-5': '/images/restaurants/rest-2/combo-desayuno.jpg',
-  // 'm2-6': '/images/restaurants/rest-2/docena-tamales.jpg',
+  'm2-1': '/images/restaurants/rest-2/tamal-clasico.jpg',
+  'm2-2': '/images/restaurants/rest-2/tamal-pipian.jpg',
+  'm2-3': '/images/restaurants/rest-2/arepa-queso.jpg',
+  'm2-4': '/images/restaurants/rest-2/avena-fria.jpg',
+  'm2-5': '/images/restaurants/rest-2/combo-desayuno.jpg',
+  'm2-6': '/images/restaurants/rest-2/docena-tamales.jpg',
 
   // ── Restaurante 3 — Comidas Caseras Doña Ana ──────────────────────────────
-  // 'm3-1': '/images/restaurants/rest-3/sancocho-gallina.jpg',
-  // 'm3-2': '/images/restaurants/rest-3/mondongo.jpg',
-  // 'm3-3': '/images/restaurants/rest-3/almuerzo-casero.jpg',
-  // 'm3-4': '/images/restaurants/rest-3/jugo-cholupa.jpg',
-  // 'm3-5': '/images/restaurants/rest-3/natilla.jpg',
+  'm3-1': '/images/restaurants/rest-3/sancocho-gallina.jpg',
+  'm3-2': '/images/restaurants/rest-3/mondongo.jpg',
+  'm3-3': '/images/restaurants/rest-3/almuerzo-casero.jpg',
+  'm3-4': '/images/restaurants/rest-3/jugo-cholupa.jpg',
+  'm3-5': '/images/restaurants/rest-3/natilla.jpg',
 
   // ── Restaurante 5 — Asados El Tolimense ──────────────────────────────────
   // 'm5-1': '/images/restaurants/rest-5/chorizo-parrilla.jpg',

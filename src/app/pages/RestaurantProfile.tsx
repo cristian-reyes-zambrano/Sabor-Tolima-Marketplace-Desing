@@ -24,10 +24,10 @@ import type { MenuItem, MenuCategory, SellerProfile } from '../types';
 
 const MENU_CATEGORIES: { id: MenuCategory; label: string; emoji: string }[] = [  { id: 'recomendados', label: 'Recomendados', emoji: '⭐' },
   { id: 'combos', label: 'Combos', emoji: '🎁' },
-  { id: 'principales', label: 'Platos Fuertes', emoji: '🍽️' },
-  { id: 'entradas', label: 'Entradas', emoji: '🥗' },
-  { id: 'bebidas', label: 'Bebidas', emoji: '🥤' },
-  { id: 'postres', label: 'Postres', emoji: '🍰' },
+  { id: 'principales', label: 'Platos Fuertes', emoji: '' },
+  { id: 'entradas', label: 'Entradas', emoji: '' },
+  { id: 'bebidas', label: 'Bebidas', emoji: '' },
+  { id: 'postres', label: 'Postres', emoji: '' },
 ];
 
 
