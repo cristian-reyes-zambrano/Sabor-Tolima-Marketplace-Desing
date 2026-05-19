@@ -73,7 +73,7 @@ function MenuItemCard({
 
   return (
     <>
-      <Card className="border border-border/60 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
+      <Card className="border border-border/50 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5">
         <CardContent className="p-0">
           <div className="flex gap-0">
             {/* Info */}
@@ -97,7 +97,7 @@ function MenuItemCard({
                 )}
               </div>
 
-              <h3 className="font-semibold text-sm text-foreground mb-1 line-clamp-1">
+              <h3 className="font-bold text-sm text-foreground mb-1 line-clamp-1">
                 {item.name}
               </h3>
               <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
@@ -121,29 +121,17 @@ function MenuItemCard({
                   <Button
                     size="sm"
                     onClick={handleAdd}
-                    className="h-8 w-8 p-0 rounded-full bg-primary hover:bg-primary/90 text-white shadow-sm"
+                    className="h-8 w-8 p-0 rounded-full bg-primary hover:bg-primary/90 text-white shadow-sm hover:shadow-md transition-all"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
                 ) : (
                   <div className="flex items-center gap-2 bg-muted rounded-full px-1 py-0.5">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleDecrease}
-                      className="h-7 w-7 p-0 rounded-full hover:bg-primary/10"
-                    >
+                    <Button size="sm" variant="ghost" onClick={handleDecrease} className="h-7 w-7 p-0 rounded-full hover:bg-primary/10">
                       <Minus className="w-3 h-3" />
                     </Button>
-                    <span className="text-sm font-bold text-foreground w-4 text-center">
-                      {quantity}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleAdd}
-                      className="h-7 w-7 p-0 rounded-full hover:bg-primary/10"
-                    >
+                    <span className="text-sm font-bold text-foreground w-4 text-center">{quantity}</span>
+                    <Button size="sm" variant="ghost" onClick={handleAdd} className="h-7 w-7 p-0 rounded-full hover:bg-primary/10">
                       <Plus className="w-3 h-3" />
                     </Button>
                   </div>
@@ -151,19 +139,25 @@ function MenuItemCard({
               </div>
             </div>
 
-            {/* Image */}
-            <div className="w-28 h-28 sm:w-32 sm:h-32 shrink-0 relative">
+            {/* Image — más grande y con bordes redondeados */}
+            <div className="w-32 h-32 sm:w-36 sm:h-36 shrink-0 relative m-3 rounded-2xl overflow-hidden">
               <SafeImage
                 src={item.image}
                 alt={item.name}
                 type="product"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 loading="lazy"
               />
+              {/* Overlay de descuento sobre la imagen */}
+              {item.discount && (
+                <div className="absolute top-1.5 left-1.5 bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-lg shadow-sm">
+                  -{item.discount}%
+                </div>
+              )}
               {item.rating && (
-                <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-white/95 px-1.5 py-0.5 rounded-full shadow-sm">
+                <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
                   <Star className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
-                  <span className="text-[10px] font-bold text-foreground">{item.rating}</span>
+                  <span className="text-[10px] font-bold text-white">{item.rating}</span>
                 </div>
               )}
             </div>
@@ -255,15 +249,17 @@ export default function RestaurantProfile() {
   return (
     <div className="min-h-screen bg-[#FAFAFA] pb-24">
       {/* Banner */}
-      <div className="relative h-56 sm:h-72 overflow-hidden">
+      <div className="relative h-64 sm:h-80 overflow-hidden">
         <SafeImage
           src={restaurantBanner}
           fallbackSrc={restaurant.imageFallback}
           alt={restaurant.name}
           type="restaurant"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-700"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        {/* Gradiente multicapa más elegante */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent" />
 
         {/* Back */}
         <Button
