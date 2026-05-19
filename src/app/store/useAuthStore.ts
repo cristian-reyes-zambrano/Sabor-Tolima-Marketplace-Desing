@@ -11,6 +11,7 @@ import {
   logoutUser,
   onAuthStateChange,
 } from '../../firebase/auth.service';
+import { updateUserDocument } from '../../firebase/firestore.service';
 
 interface AuthState {
   user: AppUser | null;
@@ -153,7 +154,6 @@ export const useAuthStore = create<AuthState>()(
           if (pendingGoogleUser) {
             updatedUser = await completeGoogleRegistration(pendingGoogleUser, role);
           } else if (user) {
-            const { updateUserDocument } = await import('../../firebase/firestore.service');
             await updateUserDocument(user.id, { role });
             updatedUser = { ...user, role };
           } else {
